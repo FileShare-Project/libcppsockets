@@ -1,0 +1,16 @@
+/*
+** Project CppSockets, 2022
+**
+** Author Francois Michaut
+**
+** Started on  Sun Aug 28 19:32:30 2022 Francois Michaut
+** Last update Wed Sep 14 22:26:40 2022 Francois Michaut
+**
+** Version.hpp.in : Library version
+*/
+
+#pragma once
+
+#define LIB_CPP_SOCKET_MAJOR @LibCppSocket_VERSION_MAJOR@
+#define LIB_CPP_SOCKET_MINOR @LibCppSocket_VERSION_MINOR@
+#define LIB_CPP_SOCKET_PATCH @LibCppSocket_VERSION_PATCH@
