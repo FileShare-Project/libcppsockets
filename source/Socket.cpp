@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Wed Sep 14 22:19:18 2022 Francois Michaut
+** Last update Sun Feb 19 11:01:09 2023 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -27,43 +27,26 @@ static constexpr int SOCKET_ERROR = -1;
 
 static constexpr int BUFF_SIZE = 4096;
 
-// TODO add exceptions on error retunrs
-// TODO throw custom exceptions on invalid status (eg: socket already connected)
+#include <array>
+
 #include "CppSockets/IPv4.hpp"
 #include "CppSockets/Socket.hpp"
 
+// TODO add exceptions on error retunrs
+// TODO throw custom exceptions on invalid status (eg: socket already connected)
 namespace CppSockets {
-    void Socket::init() {
-#ifdef _WIN32
-        static bool init_done = false;
-        WSADATA wsa_data;
-
-        if (!init_done) {
-            // TODO need to call WSACleanup too
-            if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-                throw std::runtime_error(std::string("WASStartup Failed : ") + std::strerror(errno));
-            }
-            init_done = true;
-        }
-#endif
-    }
-
     Socket::Socket(int domain, int type, int protocol, int sockfd) :
         domain(domain), type(type), protocol(protocol), sockfd(sockfd)
-    {
-        init();
-    }
+    {}
 
     Socket::Socket(int domain, int type, int protocol) :
-        domain(domain), type(type), protocol(protocol)
+        domain(domain), type(type), protocol(protocol), sockfd(::socket(domain, type, protocol))
     {
-        init();
-        sockfd = ::socket(domain, type, protocol);
         if (sockfd == INVALID_SOCKET)
             throw std::runtime_error(std::string("Failed to create socket : ") + std::strerror(errno));
     }
 
-    Socket::Socket(Socket &&other) noexcept { // NOLINT
+    Socket::Socket(Socket &&other) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
         *this = std::move(other);
     }
 
@@ -111,7 +94,7 @@ namespace CppSockets {
 
     std::string Socket::read(std::size_t len) {
         std::array<char, BUFF_SIZE> buff = {0};
-        std::string res;
+        std::string res; // TODO use a stringstream
         std::size_t total = 0;
         std::size_t nb = 1;
 
@@ -163,6 +146,11 @@ namespace CppSockets {
 
     int Socket::bind(const std::string &addr, int port) {
         return this->bind(inet_addr(addr.c_str()), port);
+    }
+
+    int Socket::bind(const IEndpoint &endpoint) {
+        // TODO: this only works for IPv4. Need to switch getFamily() to handle IPv6 / AF_UNIX ...
+        return this->bind(endpoint.getAddr().getAddress(), endpoint.getPort());
     }
 
     int Socket::bind(std::uint32_t s_addr, int port) {
@@ -219,7 +207,7 @@ namespace CppSockets {
         socklen_t len = sizeof(int);
 
         if (addr_out != nullptr) {
-            // TODO
+            // TODO figure it out
         }
         if (fd == INVALID_SOCKET) {
             return nullptr;
@@ -236,9 +224,9 @@ namespace CppSockets {
 
         if (ret >= 0) {
             if (val) {
-                ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); //NOLINT
+                ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             } else {
-                ret = fcntl(sockfd, F_SETFL, (flags | O_NONBLOCK) ^ O_NONBLOCK); //NOLINT
+                ret = fcntl(sockfd, F_SETFL, (flags | O_NONBLOCK) ^ O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             }
         }
         if (ret < 0) {

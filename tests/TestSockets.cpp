@@ -4,14 +4,14 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Mon Aug 29 20:46:38 2022 Francois Michaut
+** Last update Wed Oct 12 21:33:22 2022 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
 
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "CppSockets/Socket.hpp"
 
@@ -41,11 +41,11 @@ int TestSockets(int, char **)
             return 1;
         }
         waitpid(child, &ret, 0);
-        return !(WIFEXITED(ret) && WEXITSTATUS(ret) == 0); // NOLINT
+        return !(WIFEXITED(ret) && WEXITSTATUS(ret) == 0); // NOLINT(hicpp-signed-bitwise)
     } else {
         Socket soc(AF_INET, SOCK_STREAM, 0);
 
-        while (!soc.isConnected()) {
+        while (!soc.connected()) {
             try {
                 soc.connect("127.0.0.1", port);
             } catch (std::exception &e) {

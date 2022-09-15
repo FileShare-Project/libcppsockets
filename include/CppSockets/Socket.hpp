@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Wed Sep 14 22:18:29 2022 Francois Michaut
+** Last update Tue Feb  7 22:31:12 2023 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -26,11 +26,15 @@ using RawSocketType=int;
 #include "CppSockets/Address.hpp"
 
 namespace CppSockets {
+    static void init(bool init_ssl = true, bool init_wsa = true);
+    static void deinit(bool deinit_ssl = true, bool deinit_wsa = true);
+
     class Socket {
         public:
             Socket(int domain, int type, int protocol);
             ~Socket();
 
+            // TODO Maybe enable copy with dup(2) ?
             Socket(const Socket &other) = delete;
             Socket(Socket &&other) noexcept;
             Socket &operator=(const Socket &other) = delete;
@@ -57,7 +61,7 @@ namespace CppSockets {
 
             [[nodiscard]]
             RawSocketType get_fd() const; // TODO check if windows SOCKET can be
-                                         // converted to int
+                                          // converted to int
             [[nodiscard]]
             int get_type() const;
             [[nodiscard]]
@@ -67,15 +71,16 @@ namespace CppSockets {
 
             [[nodiscard]]
             bool connected() const;
-        private:
-            Socket(int domain, int type, int protocol, int sockfd);
 
-            static void init();
-
-            static int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
+        public:
             static int get_errno();
             static char *strerror(int err);
             static char *strerror();
+
+        private:
+            Socket(int domain, int type, int protocol, int sockfd);
+
+            static int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
 
             int domain;
             int type;

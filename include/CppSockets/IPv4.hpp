@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:05:02 2022 Francois Michaut
-** Last update Wed Sep 14 22:28:32 2022 Francois Michaut
+** Last update Thu Feb  9 08:55:24 2023 Francois Michaut
 **
 ** IPv4.hpp : Class used to represent and manipulate IPv4 addresses
 */
@@ -32,4 +32,5 @@ namespace CppSockets {
             std::uint32_t addr;
             std::string str;
     };
+    using EndpointV4 = Endpoint<IPv4>;
 }

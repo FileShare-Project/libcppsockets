@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Thu Sep 15 14:08:03 2022 Francois Michaut
+## Last update Tue May  9 11:51:16 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
@@ -26,17 +26,19 @@ add_library(cppsockets
   source/IPv4.cpp
   source/Socket.cpp
   source/TlsSocket.cpp
-  )
+)
+
+target_link_libraries(cppsockets ssl)
 
 add_custom_target(test
-  COMMAND ${CMAKE_COMMAND}
+  COMMAND ${CMAKE_COMMAND} --log-level=WARNING
   -B "${CMAKE_CURRENT_BINARY_DIR}/tests"
   -S "${CMAKE_CURRENT_SOURCE_DIR}/tests"
   -G ${CMAKE_GENERATOR}
   COMMAND ${CMAKE_COMMAND} -E cmake_echo_color
   --switch=$(COLOR) --cyan "Building tests..."
   COMMAND ${CMAKE_COMMAND}
-  --build "${CMAKE_CURRENT_BINARY_DIR}/tests"
+  --build "${CMAKE_CURRENT_BINARY_DIR}/tests" -- --quiet
   COMMAND ${CMAKE_MAKE_PROGRAM}
   -C "${CMAKE_CURRENT_BINARY_DIR}/tests" test
   )

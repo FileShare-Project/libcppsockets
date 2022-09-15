@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Mon Aug 29 20:46:03 2022 Francois Michaut
+** Last update Thu Feb  9 08:55:11 2023 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -14,6 +14,7 @@
 #include <string>
 #include <type_traits>
 
+// TODO: support IPv6 (uint32 for address will not support IPv6)
 namespace CppSockets {
     class IAddress {
         public:
