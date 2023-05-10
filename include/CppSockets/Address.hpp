@@ -4,13 +4,14 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Thu Feb  9 08:55:11 2023 Francois Michaut
+** Last update Tue Jul 18 13:34:19 2023 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <type_traits>
 

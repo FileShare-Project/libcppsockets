@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Sun Aug 28 19:55:12 2022 Francois Michaut
+## Last update Wed May 10 09:47:41 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for CppSockets
 ##
@@ -19,14 +19,16 @@ include(CTest)
 
 create_test_sourcelist(TestFiles test_driver.cpp
   TestSockets.cpp
-  )
+)
 
 add_executable(unit_tests
   ../source/Address.cpp
   ../source/Socket.cpp
   ../source/IPv4.cpp
   ${TestFiles}
-  )
+)
+
+target_compile_definitions(unit_tests PRIVATE DEBUG)
 
 foreach (test ${TestFiles})
   if (NOT ${test} STREQUAL test_driver.cpp)

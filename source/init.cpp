@@ -4,21 +4,23 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Sep 15 14:24:25 2022 Francois Michaut
-** Last update Thu Sep 15 21:06:20 2022 Francois Michaut
+** Last update Tue May  9 23:34:46 2023 Francois Michaut
 **
 ** init.cpp : Startup/Cleanup functions implementation
 */
 
-#ifdef _WIN32
-#include <winsock2.h>
+#include "CppSockets/OSDetection.hpp"
+
+#ifdef OS_WINDOWS
+  #include <winsock2.h>
 #else
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+  #include <openssl/err.h>
+  #include <openssl/ssl.h>
 #endif
 
 namespace CppSockets {
     void init(bool init_ssl, bool init_wsa) {
-#ifdef _WIN32
+#ifdef OS_WINDOWS
         if (init_wsa) {
             WSADATA wsa_data;
 
@@ -41,7 +43,7 @@ namespace CppSockets {
     }
 
     void deinit(bool deinit_ssl, bool deinit_wsa) {
-#ifdef _WIN32
+#ifdef OS_WINDOWS
         if (deinit_wsa) {
             if (WSACleanup() == SOCKET_ERROR) {
                 // TODO use FormatMessage to get the error string

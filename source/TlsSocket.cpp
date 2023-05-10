@@ -4,16 +4,17 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Wed Oct 12 20:10:27 2022 Francois Michaut
+** Last update Tue May  9 23:34:24 2023 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
 
-#ifdef _WIN32
+#include "CppSockets/OSDetection.hpp"
+#include "CppSockets/TlsSocket.hpp"
+
+#ifdef OS_WINDOWS
 // TODO Currently disabling TlsSocket for windows
 #else
-
-#include "CppSockets/TlsSocket.hpp"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>

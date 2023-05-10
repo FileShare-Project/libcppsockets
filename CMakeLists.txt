@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Tue May  9 11:51:16 2023 Francois Michaut
+## Last update Wed May 10 08:24:03 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
@@ -40,5 +40,5 @@ add_custom_target(test
   COMMAND ${CMAKE_COMMAND}
   --build "${CMAKE_CURRENT_BINARY_DIR}/tests" -- --quiet
   COMMAND ${CMAKE_MAKE_PROGRAM}
-  -C "${CMAKE_CURRENT_BINARY_DIR}/tests" test
+  -C "${CMAKE_CURRENT_BINARY_DIR}/tests" test ARGS=--output-on-failure
   )

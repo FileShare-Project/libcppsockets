@@ -4,33 +4,34 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Sun Feb 19 11:01:09 2023 Francois Michaut
+** Last update Tue May  9 23:33:46 2023 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
 
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstring>
-#include <stdexcept>
-#include <unistd.h>
+#include "CppSockets/IPv4.hpp"
+#include "CppSockets/OSDetection.hpp"
+#include "CppSockets/Socket.hpp"
 
-#ifdef _WIN32
-#include <ws2tcpip.h>
+#ifdef OS_WINDOWS
+  #include <ws2tcpip.h>
 #else
-#include <fcntl.h>
-#include <netinet/in.h>
+  #include <fcntl.h>
+  #include <netinet/in.h>
  // To match windows's constants
-static constexpr int INVALID_SOCKET = -1;
-static constexpr int SOCKET_ERROR = -1;
+  static constexpr int INVALID_SOCKET = -1;
+  static constexpr int SOCKET_ERROR = -1;
 #endif
 
 static constexpr int BUFF_SIZE = 4096;
 
 #include <array>
+#include <cerrno>
+#include <cstring>
+#include <stdexcept>
 
-#include "CppSockets/IPv4.hpp"
-#include "CppSockets/Socket.hpp"
+#include <arpa/inet.h>
+#include <unistd.h>
 
 // TODO add exceptions on error retunrs
 // TODO throw custom exceptions on invalid status (eg: socket already connected)
@@ -58,7 +59,7 @@ namespace CppSockets {
     }
 
     Socket::~Socket() {
-#ifdef _WIN32
+#ifdef OS_WINDOWS
         closesocket(raw_socket);
 #else
         close(sockfd);
@@ -79,14 +80,14 @@ namespace CppSockets {
     }
 
     char *Socket::strerror(int err) {
-#ifdef _WIN32
+#ifdef OS_WINDOWS
 #else
         return ::strerror(err);
 #endif
     }
 
     int Socket::get_errno() {
-#ifdef _WIN32
+#ifdef OS_WINDOWS
 #else
         return errno;
 #endif

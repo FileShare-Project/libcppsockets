@@ -4,21 +4,23 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Tue Feb  7 22:31:12 2023 Francois Michaut
+** Last update Tue May  9 23:31:24 2023 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
 
 #pragma once
 
-#ifdef _WIN32
-#define NOMINMAX
-#include <winsock2.h>
-using RawSocketType=SOCKET;
-using socklen_t=int;
+#include "CppSockets/OSDetection.hpp"
+
+#ifdef OS_WINDOWS
+  #define NOMINMAX
+  #include <winsock2.h>
+  using RawSocketType=SOCKET;
+  using socklen_t=int;
 #else
-#include <sys/socket.h>
-using RawSocketType=int;
+  #include <sys/socket.h>
+  using RawSocketType=int;
 #endif
 
 #include <memory>
