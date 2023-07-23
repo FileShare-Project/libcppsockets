@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Tue Jul 18 13:34:19 2023 Francois Michaut
+** Last update Thu Jul 20 21:17:13 2023 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -30,7 +30,7 @@ namespace CppSockets {
     class IEndpoint {
         public:
             [[nodiscard]]
-            virtual int getPort() const = 0;
+            virtual std::uint16_t getPort() const = 0;
             [[nodiscard]]
             virtual const IAddress &getAddr() const = 0;
             [[nodiscard]]
@@ -47,12 +47,12 @@ namespace CppSockets {
                       "Endpoint address must derive from IAddress"
         );
         public:
-            Endpoint(T addr, int port) :
+            Endpoint(T addr, std::uint16_t port) :
                 addr(std::move(addr)), port(port), str(makeString())
             {};
 
             [[nodiscard]]
-            int getPort() const override {
+            std::uint16_t getPort() const override {
                 return port;
             }
 
@@ -66,7 +66,7 @@ namespace CppSockets {
                 return str;
             }
         private:
-            int port;
+            std::uint16_t port;
             T addr;
             std::string str;
     };

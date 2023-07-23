@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 20:51:23 2022 Francois Michaut
-** Last update Tue May  9 23:29:53 2023 Francois Michaut
+** Last update Sat Jul 22 22:45:28 2023 Francois Michaut
 **
 ** SecureSocket.hpp : TLS socket wrapper using openssl
 */
@@ -23,6 +23,7 @@
 #include <functional>
 
 // TODO: find a better way do to this
+using BIO = struct bio_st;
 using SSL = struct ssl_st;
 using SSL_METHOD = struct ssl_method_st;
 using SSL_CTX = struct ssl_ctx_st;
@@ -33,6 +34,7 @@ using EVP_MD = struct evp_md_st;
 using EVP_MD_CTX = struct evp_md_ctx_st;
 
 namespace CppSockets {
+    using BIO_ptr=std::unique_ptr<BIO, std::function<void(BIO *)>>;
     using SSL_CTX_ptr=std::unique_ptr<SSL_CTX, std::function<void(SSL_CTX *)>>;
     using SSL_ptr=std::unique_ptr<SSL, std::function<void(SSL *)>>;
     using X509_ptr=std::unique_ptr<X509, std::function<void(X509 *)>>;
@@ -44,8 +46,10 @@ namespace CppSockets {
     // TODO add more TLS-related functions
     class TlsSocket : public Socket {
         public:
-            explicit TlsSocket(Socket &&other);
+            TlsSocket() = default;
             TlsSocket(int domain, int type, int protocol);
+            TlsSocket(Socket &&other, SSL_ptr ssl = nullptr);
+            TlsSocket(RawSocketType fd, SSL_ptr ssl = nullptr);
             ~TlsSocket();
 
             TlsSocket(const TlsSocket &other) = delete;
@@ -58,9 +62,10 @@ namespace CppSockets {
             std::size_t write(const std::string &buff);
             std::size_t write(const char *buff, std::size_t len);
 
+            void set_certificate(std::string cert_path, std::string pkey_path);
             int connect(const IEndpoint &endpoint);
 
-            std::shared_ptr<TlsSocket> accept(void *addr_out);
+            std::shared_ptr<TlsSocket> accept(void *addr_out = nullptr);
 
             [[nodiscard]]
             const SSL_CTX_ptr &get_ssl_ctx() const;
@@ -72,26 +77,30 @@ namespace CppSockets {
             [[nodiscard]]
             const std::string tls_strerror(int ret);
         private:
-            SSL_CTX_ptr ctx;
-            SSL_ptr ssl;
-            X509_ptr peer_cert;
-            bool do_shutdown = true;
+            SSL_CTX_ptr m_ctx;
+            SSL_ptr m_ssl;
+            X509_ptr m_peer_cert;
+            X509_ptr m_cert;
+            EVP_PKEY_ptr m_pkey;
+            bool m_do_shutdown = true;
+
+            void check_for_error(std::string error_msg, int ret);
     };
 
     inline std::size_t TlsSocket::write(const std::string &buff) {
-        return write(buff.data(), buff.size());
+        return write(buff.c_str(), buff.size());
     }
 
     inline const SSL_CTX_ptr &TlsSocket::get_ssl_ctx() const {
-        return ctx;
+        return m_ctx;
     }
 
     inline const SSL_ptr &TlsSocket::get_ssl() const {
-        return ssl;
+        return m_ssl;
     }
 
     inline const X509_ptr &TlsSocket::get_client_cert() const {
-        return peer_cert;
+        return m_peer_cert;
     }
 }
 #endif

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Tue May  9 23:34:24 2023 Francois Michaut
+** Last update Sat Jul 22 22:52:37 2023 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -43,56 +43,95 @@ namespace CppSockets {
     // TODO check if needs to call SSL_shutdown in such cases
     TlsSocket::TlsSocket(int domain, int type, int protocol) :
         CppSockets::Socket(domain, type, protocol),
-        ctx(SSL_CTX_new(TLS_method()), SSL_CTX_free),
-        ssl((ctx ? SSL_new(ctx.get()) : nullptr), SSL_free),
-        peer_cert(nullptr, X509_free)
+        m_ctx(SSL_CTX_new(TLS_method()), SSL_CTX_free),
+        m_ssl((m_ctx ? SSL_new(m_ctx.get()) : nullptr), SSL_free),
+        m_peer_cert(nullptr, X509_free),
+        m_cert(nullptr, X509_free),
+        m_pkey(nullptr, EVP_PKEY_free)
     {
-        init_ssl_socket(ssl.get(), ctx.get(), this);
+        init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
     }
 
-    TlsSocket::TlsSocket(Socket &&other) :
-        CppSockets::Socket(std::move(other)),
-        ctx(SSL_CTX_new(TLS_method()), SSL_CTX_free),
-        ssl(SSL_new(ctx.get()), SSL_free),
-        peer_cert(nullptr, X509_free)
+    // TlsSocket::TlsSocket(RawSocketType fd, SSL_ptr ssl) :
+    //     CppSockets::Socket(fd),
+    //     m_ctx((ssl ? SSL_get_SSL_CTX(ssl.get()) : SSL_CTX_new(TLS_method())), SSL_CTX_free),
+    //     m_ssl(ssl ? std::move(ssl) : (m_ctx ? SSL_ptr(SSL_new(m_ctx.get()), SSL_free) : nullptr)),
+    //     m_peer_cert(nullptr, X509_free),
+    //     m_cert(nullptr, X509_free),
+    //     m_pkey(nullptr, EVP_PKEY_free)
+    // {
+    //     init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
+    // }
+
+    TlsSocket::TlsSocket(Socket &&other, SSL_ptr ssl) :
+        CppSockets::Socket(std::move(other)), // TODO: if socket is not connected, at that moment, does it break ?
+        m_ctx((ssl ? SSL_get_SSL_CTX(ssl.get()) : SSL_CTX_new(TLS_method())), SSL_CTX_free),
+        m_ssl(ssl ? std::move(ssl) : (m_ctx ? SSL_ptr(SSL_new(m_ctx.get()), SSL_free) : nullptr)),
+        m_peer_cert(nullptr, X509_free),
+        m_cert(nullptr, X509_free),
+        m_pkey(nullptr, EVP_PKEY_free)
     {
-        init_ssl_socket(ssl.get(), ctx.get(), this);
+        init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
     }
 
     TlsSocket::~TlsSocket() {
-        if (do_shutdown && ssl) {
-            SSL_shutdown(ssl.get());
+        if (m_do_shutdown && m_ssl && is_connected) {
+            SSL_shutdown(m_ssl.get()); // TODO: log failure
         }
     }
 
     TlsSocket::TlsSocket(TlsSocket &&other) noexcept :
-        Socket(std::move(other)), ctx(std::move(other.ctx)),
-        ssl(std::move(other.ssl)), peer_cert(std::move(other.peer_cert)),
-        do_shutdown(other.do_shutdown)
+        Socket(std::move(other)), m_ctx(std::move(other.m_ctx)),
+        m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert)),
+        m_cert(std::move(other.m_cert)), m_pkey(std::move(other.m_pkey)),
+        m_do_shutdown(other.m_do_shutdown)
     {}
 
     TlsSocket &TlsSocket::operator=(TlsSocket &&other) noexcept
     {
-        ctx = std::move(other.ctx);
-        ssl = std::move(other.ssl);
-        peer_cert = std::move(other.peer_cert);
-        do_shutdown = other.do_shutdown;
+        m_ctx = std::move(other.m_ctx);
+        m_ssl = std::move(other.m_ssl);
+        m_peer_cert = std::move(other.m_peer_cert);
+        m_cert = std::move(other.m_cert);
+        m_pkey = std::move(other.m_pkey),
+        m_do_shutdown = other.m_do_shutdown;
 
         Socket::operator=(std::move(other));
         return *this;
+    }
+
+    void TlsSocket::set_certificate(std::string cert_path, std::string pkey_path) {
+        BIO_ptr cert(BIO_new_file(cert_path.c_str(), "r"), BIO_free);
+        BIO_ptr pkey(BIO_new_file(pkey_path.c_str(), "r"), BIO_free);
+        // TODO: handle pkey password: SSL_CTX_set_default_passwd_cb
+        X509_ptr x509(PEM_read_bio_X509(cert.get(), nullptr, nullptr, nullptr), X509_free);
+        EVP_PKEY_ptr evp_pkey(PEM_read_bio_PrivateKey(pkey.get(), nullptr, nullptr, nullptr), EVP_PKEY_free);
+
+        if (SSL_CTX_use_certificate(m_ctx.get(), x509.get()) <= 0) {
+            throw std::runtime_error(std::string("Failed to set certificate: ") + TlsSocket::tls_strerror(0));
+        }
+        m_cert = std::move(x509);
+
+        if (SSL_CTX_use_PrivateKey(m_ctx.get(), evp_pkey.get()) <= 0 ) {
+            throw std::runtime_error(std::string("Failed to set private key: ") + TlsSocket::tls_strerror(0));
+        }
+        m_pkey = std::move(evp_pkey);
     }
 
     // TODO add SSL_get_shutdown checks in read operations
     std::string TlsSocket::read(std::size_t len) {
         std::array<char, BUFF_SIZE> buff = {0};
         std::stringstream res;
-        std::size_t total = SSL_pending(ssl.get());
         std::size_t nb = 0;
+        std::size_t total;
 
+        if (SSL_peek(m_ssl.get(), buff.data(), BUFF_SIZE) <= 0) {
+            is_connected = false;
+        }
+        check_for_error("Failed to read from socket", 1); // Do not raise an error if peek failed
+        total = SSL_pending(m_ssl.get());
         while (total != 0 && len != 0) {
-            if (!SSL_read_ex(ssl.get(), buff.data(), (BUFF_SIZE > len ? len : BUFF_SIZE), &nb)) {
-                throw std::runtime_error(std::string("Failed to read from socket: ") + TlsSocket::tls_strerror(0));
-            }
+            nb = this->read(buff.data(), (BUFF_SIZE > len ? len : BUFF_SIZE));
             res << std::string(buff.data(), nb);
             total -= nb;
             if (len != -1)
@@ -103,30 +142,38 @@ namespace CppSockets {
 
     std::size_t TlsSocket::read(char *buff, std::size_t size) {
         std::size_t nb = 0;
+        int ret = SSL_read_ex(m_ssl.get(), buff, size, &nb);
 
-        if (!SSL_read_ex(ssl.get(), buff, size, &nb)) {
-            throw std::runtime_error(std::string("Failed to read from socket: ") + TlsSocket::tls_strerror(0));
-        }
+        check_for_error("Failed to read from socket: ", ret);
         return nb;
     }
 
     std::size_t TlsSocket::write(const char *buff, std::size_t len) {
         std::size_t nb = 0;
+        int ret = SSL_write_ex(m_ssl.get(), (void *)buff, len, &nb);
 
-        if (!SSL_read_ex(ssl.get(), (void *)buff, len, &nb)) {
-            throw std::runtime_error(std::string("Failed to read from socket: ") + TlsSocket::tls_strerror(0));
-        }
+        check_for_error("Failed to write to socket: ", ret);
         return nb;
+    }
+
+    void TlsSocket::check_for_error(std::string error_msg, int ret) {
+        if (SSL_get_shutdown(m_ssl.get()) != 0) {
+            is_connected = false;
+        }
+
+        if (ret <= 0) {
+            throw std::runtime_error(error_msg + TlsSocket::tls_strerror(ret));
+        }
     }
 
     int TlsSocket::connect(const IEndpoint &endpoint) {
         int ret = Socket::connect(endpoint);
-        int ssl_ret = SSL_connect(ssl.get());
+        int ssl_ret = SSL_connect(m_ssl.get());
 
         if (ssl_ret != 1) {
             throw std::runtime_error(std::string("Failed to connect: ") + TlsSocket::tls_strerror(ssl_ret));
         }
-        peer_cert.reset(SSL_get_peer_certificate(ssl.get()));
+        m_peer_cert.reset(SSL_get_peer_certificate(m_ssl.get()));
         return ret;
     }
 
@@ -137,12 +184,12 @@ namespace CppSockets {
 
         if (!res)
             return nullptr;
-        tls = std::make_shared<TlsSocket>(std::move(*res));
+        tls = std::make_shared<TlsSocket>(std::move(*res), SSL_ptr(SSL_new(m_ctx.get()), SSL_free));
         ssl_ret = SSL_accept(tls->get_ssl().get());
         if (ssl_ret <= 0) {
             throw std::runtime_error("Failed to accept TLS connection: " + TlsSocket::tls_strerror(ssl_ret));
         }
-        tls->peer_cert.reset(SSL_get_peer_certificate(ssl.get()));
+        tls->m_peer_cert.reset(SSL_get_peer_certificate(m_ssl.get()));
         return tls;
     }
 
@@ -161,7 +208,7 @@ namespace CppSockets {
     }
 
     const std::string TlsSocket::tls_strerror(int ret) {
-        int err = SSL_get_error(ssl.get(), ret);
+        int err = SSL_get_error(m_ssl.get(), ret);
 
         switch (err) {
             case SSL_ERROR_NONE:
@@ -185,10 +232,10 @@ namespace CppSockets {
             case SSL_ERROR_WANT_CLIENT_HELLO_CB:
                 return "Retry the operation later: WANT_CLIENT_HELLO_CB";
             case SSL_ERROR_SYSCALL:
-                do_shutdown = false;
+                m_do_shutdown = false;
                 return std::string("Fatal system error: ") + Socket::strerror() + '\n' + extract_errors_from_queue();
             case SSL_ERROR_SSL:
-                do_shutdown = false;
+                m_do_shutdown = false;
                 return  "Fatal TLS error: " + extract_errors_from_queue();
             default:
                 return "Unknown error: " + std::to_string(err) + '\n' + extract_errors_from_queue();

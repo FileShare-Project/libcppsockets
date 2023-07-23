@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Tue May  9 23:31:24 2023 Francois Michaut
+** Last update Sat Jul 22 19:43:35 2023 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -13,6 +13,7 @@
 
 #include "CppSockets/OSDetection.hpp"
 
+// TODO: move the RawSocketType in CppSockets namespace
 #ifdef OS_WINDOWS
   #define NOMINMAX
   #include <winsock2.h>
@@ -33,7 +34,9 @@ namespace CppSockets {
 
     class Socket {
         public:
+            Socket();
             Socket(int domain, int type, int protocol);
+            Socket(RawSocketType fd, bool connected);
             ~Socket();
 
             // TODO Maybe enable copy with dup(2) ?
@@ -47,17 +50,18 @@ namespace CppSockets {
             std::size_t write(const std::string &buff);
             std::size_t write(const char *buff, std::size_t len);
 
+            int set_reuseaddr(bool value);
             int getsockopt(int level, int optname, void *optval, socklen_t *optlen);
             int setsockopt(int level, int optname, const void *optval, socklen_t optlen);
 
+            void close();
             int connect(const IEndpoint &endpoint);
-            int connect(const std::string &addr, int port);
+            int connect(const std::string &addr, uint16_t port);
 
-            int bind(std::uint32_t addr, int port); // TODO remove ?
             int bind(const IEndpoint &endpoint);
-            int bind(const std::string &addr, int port);
+            int bind(const std::string &addr, uint16_t port);
             int listen(int backlog);
-            std::shared_ptr<Socket> accept(void *addr_out);
+            std::shared_ptr<Socket> accept(void *addr_out = nullptr);
 
             void set_blocking(bool val);
 
@@ -79,14 +83,13 @@ namespace CppSockets {
             static char *strerror(int err);
             static char *strerror();
 
-        private:
-            Socket(int domain, int type, int protocol, int sockfd);
-
+        protected:
             static int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
+            int bind(std::uint32_t addr, uint16_t port);
 
-            int domain;
-            int type;
-            int protocol;
+            int domain = 0;
+            int type = 0;
+            int protocol = 0;
             RawSocketType sockfd;
             bool is_connected = false;
     };
