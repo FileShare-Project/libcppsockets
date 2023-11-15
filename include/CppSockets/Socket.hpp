@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Sat Jul 22 19:43:35 2023 Francois Michaut
+** Last update Tue Nov 14 19:37:59 2023 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -87,10 +87,10 @@ namespace CppSockets {
             static int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
             int bind(std::uint32_t addr, uint16_t port);
 
-            int domain = 0;
-            int type = 0;
-            int protocol = 0;
-            RawSocketType sockfd;
-            bool is_connected = false;
+            int m_domain = 0;
+            int m_type = 0;
+            int m_protocol = 0;
+            RawSocketType m_sockfd;
+            bool m_is_connected = false;
     };
 }

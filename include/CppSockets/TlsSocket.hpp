@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 20:51:23 2022 Francois Michaut
-** Last update Sat Jul 22 22:45:28 2023 Francois Michaut
+** Last update Tue Nov 14 19:37:45 2023 Francois Michaut
 **
 ** SecureSocket.hpp : TLS socket wrapper using openssl
 */
@@ -60,6 +60,7 @@ namespace CppSockets {
             std::string read(std::size_t len = -1);
             std::size_t read(char *buff, std::size_t size);
             std::size_t write(const std::string &buff);
+            std::size_t write(std::string_view buff);
             std::size_t write(const char *buff, std::size_t len);
 
             void set_certificate(std::string cert_path, std::string pkey_path);
@@ -82,10 +83,13 @@ namespace CppSockets {
             X509_ptr m_peer_cert;
             X509_ptr m_cert;
             EVP_PKEY_ptr m_pkey;
-            bool m_do_shutdown = true;
 
             void check_for_error(std::string error_msg, int ret);
     };
+
+    inline std::size_t TlsSocket::write(std::string_view buff) {
+        return write(buff.data(), buff.size());
+    }
 
     inline std::size_t TlsSocket::write(const std::string &buff) {
         return write(buff.c_str(), buff.size());

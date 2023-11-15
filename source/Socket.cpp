@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Sat Jul 22 22:09:20 2023 Francois Michaut
+** Last update Tue Nov 14 20:03:40 2023 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -38,29 +38,29 @@ static constexpr int BUFF_SIZE = 4096;
 // TODO throw custom exceptions on invalid status (eg: socket already connected)
 namespace CppSockets {
     Socket::Socket(RawSocketType sockfd, bool connected) :
-        sockfd(sockfd), is_connected(connected)
+        m_sockfd(sockfd), m_is_connected(connected)
     {
         socklen_t len = sizeof(int);
 
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &domain, &len);
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &type, &len);
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &protocol, &len);
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &m_type, &len);
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
     }
 
     // TODO: more error handling arround is_connected == false and sockfd == INVALID in IO calls
     Socket::Socket() :
-        sockfd(INVALID_SOCKET)
+        m_sockfd(INVALID_SOCKET)
     {}
 
     Socket::Socket(int domain, int type, int protocol) :
-        domain(domain), type(type), protocol(protocol), sockfd(::socket(domain, type, protocol))
+        m_domain(domain), m_type(type), m_protocol(protocol), m_sockfd(::socket(domain, type, protocol))
     {
-        if (sockfd == INVALID_SOCKET)
+        if (m_sockfd == INVALID_SOCKET)
             throw std::runtime_error(std::string("Failed to create socket : ") + std::strerror(errno));
     }
 
     Socket::Socket(Socket &&other) noexcept :
-        sockfd(INVALID_SOCKET)
+        m_sockfd(INVALID_SOCKET)
     {
         *this = std::move(other);
     }
@@ -70,19 +70,19 @@ namespace CppSockets {
             return *this;
         this->close();
 
-        sockfd = other.sockfd;
-        domain = other.domain;
-        other.sockfd = INVALID_SOCKET;
-        is_connected = other.is_connected;
+        m_sockfd = other.m_sockfd;
+        m_domain = other.m_domain;
+        other.m_sockfd = INVALID_SOCKET;
+        m_is_connected = other.m_is_connected;
         return *this;
     }
 
     void Socket::close() {
-        if (sockfd != INVALID_SOCKET) {
+        if (m_sockfd != INVALID_SOCKET) {
 #ifdef OS_WINDOWS
             closesocket(raw_socket);
 #else
-            ::close(sockfd);
+            ::close(m_sockfd);
 #endif
         }
     }
@@ -136,13 +136,13 @@ namespace CppSockets {
     std::size_t Socket::read(char *buff, std::size_t size) {
         std::size_t ret;
 
-        if (!is_connected)
+        if (!m_is_connected)
             throw std::runtime_error("Not connected");
-        ret = ::read(sockfd, buff, size);
+        ret = ::read(m_sockfd, buff, size);
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to read from socket: ") + Socket::strerror());
         } else if (ret == 0 && size > 0) {
-            is_connected = false;
+            m_is_connected = false;
         }
         return ret;
     }
@@ -154,9 +154,9 @@ namespace CppSockets {
     std::size_t Socket::write(const char *buff, std::size_t len) {
         std::size_t ret;
 
-        if (!is_connected)
+        if (!m_is_connected)
             throw std::runtime_error("Not connected");
-        ret = ::write(sockfd, buff, len);
+        ret = ::write(m_sockfd, buff, len);
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to write to socket: ") + Socket::strerror());
         }
@@ -170,11 +170,11 @@ namespace CppSockets {
     }
 
     int Socket::getsockopt(int level, int optname, void *optval, socklen_t *optlen) {
-        return this->getsockopt(sockfd, level, optname, optval, optlen);
+        return this->getsockopt(m_sockfd, level, optname, optval, optlen);
     }
 
     int Socket::setsockopt(int level, int optname, const void *optval, socklen_t optlen) {
-        int ret = ::setsockopt(sockfd, level, optname, optval, optlen);
+        int ret = ::setsockopt(m_sockfd, level, optname, optval, optlen);
 
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to set sock opt: ") + Socket::strerror());
@@ -195,10 +195,10 @@ namespace CppSockets {
         struct sockaddr_in addr = {};
         int ret = 0;
 
-        addr.sin_family = domain;
+        addr.sin_family = m_domain;
         addr.sin_addr.s_addr = s_addr;
         addr.sin_port = htons(port);
-        ret = ::bind(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+        ret = ::bind(m_sockfd, (struct sockaddr *)&addr, sizeof(addr));
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to bind socket: ") + Socket::strerror());
         }
@@ -216,20 +216,20 @@ namespace CppSockets {
         addr.sin_addr.s_addr = endpoint.getAddr().getAddress();
         addr.sin_port = htons(endpoint.getPort());
         addr.sin_family = endpoint.getAddr().getFamily();
-        ret = ::connect(sockfd, (const struct sockaddr *)&addr, sizeof(addr));
+        ret = ::connect(m_sockfd, (const struct sockaddr *)&addr, sizeof(addr));
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.toString() + " : " + Socket::strerror());
         }
-        is_connected = ret == 0;
+        m_is_connected = ret == 0;
         return ret;
     }
 
     bool Socket::connected() const {
-        return is_connected;
+        return m_is_connected;
     }
 
     int Socket::listen(int backlog) {
-        int ret = ::listen(sockfd, backlog);
+        int ret = ::listen(m_sockfd, backlog);
 
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to listen socket: ") + Socket::strerror());
@@ -238,7 +238,7 @@ namespace CppSockets {
     }
 
     std::shared_ptr<Socket> Socket::accept(void *addr_out) {
-        int fd = ::accept(sockfd, nullptr, nullptr);
+        int fd = ::accept(m_sockfd, nullptr, nullptr);
         int domain = 0;
         int type = 0;
         int protocol = 0;
@@ -253,14 +253,14 @@ namespace CppSockets {
     }
 
     void Socket::set_blocking(bool val) {
-        int flags = fcntl(sockfd, F_GETFL, 0);
+        int flags = fcntl(m_sockfd, F_GETFL, 0);
         int ret = flags;
 
         if (ret >= 0) {
             if (val) {
-                ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
+                ret = fcntl(m_sockfd, F_SETFL, flags | O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             } else {
-                ret = fcntl(sockfd, F_SETFL, (flags | O_NONBLOCK) ^ O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
+                ret = fcntl(m_sockfd, F_SETFL, (flags | O_NONBLOCK) ^ O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             }
         }
         if (ret < 0) {
@@ -269,18 +269,18 @@ namespace CppSockets {
     }
 
     RawSocketType Socket::get_fd() const {
-        return sockfd;
+        return m_sockfd;
     }
 
     int Socket::get_domain() const {
-        return domain;
+        return m_domain;
     }
 
     int Socket::get_protocol() const {
-        return protocol;
+        return m_protocol;
     }
 
     int Socket::get_type() const {
-        return type;
+        return m_type;
     }
 }

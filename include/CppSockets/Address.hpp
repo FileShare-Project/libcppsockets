@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Thu Jul 20 21:17:13 2023 Francois Michaut
+** Last update Sat Nov 11 16:57:43 2023 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -15,30 +15,24 @@
 #include <string>
 #include <type_traits>
 
+// TODO: add parsing functions (eg: from_string()) ?
 // TODO: support IPv6 (uint32 for address will not support IPv6)
 namespace CppSockets {
     class IAddress {
         public:
-            [[nodiscard]]
-            virtual std::uint32_t getAddress() const = 0;
-            [[nodiscard]]
-            virtual int getFamily() const = 0;
-            [[nodiscard]]
-            virtual const std::string &toString() const = 0;
+            [[nodiscard]] virtual std::uint32_t getAddress() const = 0;
+            [[nodiscard]] virtual int getFamily() const = 0;
+            [[nodiscard]] virtual const std::string &toString() const = 0;
     };
 
     class IEndpoint {
         public:
-            [[nodiscard]]
-            virtual std::uint16_t getPort() const = 0;
-            [[nodiscard]]
-            virtual const IAddress &getAddr() const = 0;
-            [[nodiscard]]
-            virtual const std::string &toString() const = 0;
+            [[nodiscard]] virtual std::uint16_t getPort() const = 0;
+            [[nodiscard]] virtual const IAddress &getAddr() const = 0;
+            [[nodiscard]] virtual const std::string &toString() const = 0;
 
         protected:
-            [[nodiscard]]
-            std::string makeString() const;
+            [[nodiscard]] std::string makeString() const;
     };
 
     template <class T>
@@ -51,18 +45,15 @@ namespace CppSockets {
                 addr(std::move(addr)), port(port), str(makeString())
             {};
 
-            [[nodiscard]]
-            std::uint16_t getPort() const override {
+            [[nodiscard]] std::uint16_t getPort() const override {
                 return port;
             }
 
-            [[nodiscard]]
-            const T &getAddr() const override {
+            [[nodiscard]] const T &getAddr() const override {
                 return addr;
             }
 
-            [[nodiscard]]
-            const std::string &toString() const override {
+            [[nodiscard]] const std::string &toString() const override {
                 return str;
             }
         private:

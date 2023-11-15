@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Sat Jul 22 22:52:37 2023 Francois Michaut
+** Last update Tue Nov 14 21:15:11 2023 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -75,16 +75,22 @@ namespace CppSockets {
     }
 
     TlsSocket::~TlsSocket() {
-        if (m_do_shutdown && m_ssl && is_connected) {
-            SSL_shutdown(m_ssl.get()); // TODO: log failure
+        if (m_ssl && m_is_connected) {
+            int ret = SSL_shutdown(m_ssl.get()); // TODO: log failure
+
+            if (ret == 0) {
+                while (m_is_connected) {
+                    this->read();
+                }
+                SSL_shutdown(m_ssl.get()); // TODO: log failure
+            }
         }
     }
 
     TlsSocket::TlsSocket(TlsSocket &&other) noexcept :
         Socket(std::move(other)), m_ctx(std::move(other.m_ctx)),
         m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert)),
-        m_cert(std::move(other.m_cert)), m_pkey(std::move(other.m_pkey)),
-        m_do_shutdown(other.m_do_shutdown)
+        m_cert(std::move(other.m_cert)), m_pkey(std::move(other.m_pkey))
     {}
 
     TlsSocket &TlsSocket::operator=(TlsSocket &&other) noexcept
@@ -94,7 +100,6 @@ namespace CppSockets {
         m_peer_cert = std::move(other.m_peer_cert);
         m_cert = std::move(other.m_cert);
         m_pkey = std::move(other.m_pkey),
-        m_do_shutdown = other.m_do_shutdown;
 
         Socket::operator=(std::move(other));
         return *this;
@@ -126,7 +131,7 @@ namespace CppSockets {
         std::size_t total;
 
         if (SSL_peek(m_ssl.get(), buff.data(), BUFF_SIZE) <= 0) {
-            is_connected = false;
+            m_is_connected = false; // TODO: we should replace this with check_for_error
         }
         check_for_error("Failed to read from socket", 1); // Do not raise an error if peek failed
         total = SSL_pending(m_ssl.get());
@@ -157,8 +162,11 @@ namespace CppSockets {
     }
 
     void TlsSocket::check_for_error(std::string error_msg, int ret) {
-        if (SSL_get_shutdown(m_ssl.get()) != 0) {
-            is_connected = false;
+        int shutdown = SSL_get_shutdown(m_ssl.get());
+
+        if (shutdown == SSL_RECEIVED_SHUTDOWN) {
+            SSL_shutdown(m_ssl.get()); // TODO: log failure
+            m_is_connected = false;
         }
 
         if (ret <= 0) {
@@ -184,6 +192,10 @@ namespace CppSockets {
 
         if (!res)
             return nullptr;
+        if (SSL_CTX_up_ref(m_ctx.get()) == 0) {
+            throw  std::runtime_error("Failed to DUP SSL_CTX: " + TlsSocket::tls_strerror(0));
+        }
+
         tls = std::make_shared<TlsSocket>(std::move(*res), SSL_ptr(SSL_new(m_ctx.get()), SSL_free));
         ssl_ret = SSL_accept(tls->get_ssl().get());
         if (ssl_ret <= 0) {
@@ -232,10 +244,10 @@ namespace CppSockets {
             case SSL_ERROR_WANT_CLIENT_HELLO_CB:
                 return "Retry the operation later: WANT_CLIENT_HELLO_CB";
             case SSL_ERROR_SYSCALL:
-                m_do_shutdown = false;
+                m_is_connected = false;
                 return std::string("Fatal system error: ") + Socket::strerror() + '\n' + extract_errors_from_queue();
             case SSL_ERROR_SSL:
-                m_do_shutdown = false;
+                m_is_connected = false;
                 return  "Fatal TLS error: " + extract_errors_from_queue();
             default:
                 return "Unknown error: " + std::to_string(err) + '\n' + extract_errors_from_queue();
