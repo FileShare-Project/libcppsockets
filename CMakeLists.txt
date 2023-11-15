@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Wed May 10 08:24:03 2023 Francois Michaut
+## Last update Thu Nov 23 18:30:41 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
@@ -28,7 +28,8 @@ add_library(cppsockets
   source/TlsSocket.cpp
 )
 
-target_link_libraries(cppsockets ssl)
+find_package(OpenSSL 3.0 COMPONENTS SSL)
+target_link_libraries(cppsockets OpenSSL::SSL)
 
 add_custom_target(test
   COMMAND ${CMAKE_COMMAND} --log-level=WARNING

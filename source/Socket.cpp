@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Tue Nov 14 20:03:40 2023 Francois Michaut
+** Last update Thu Nov 23 23:13:35 2023 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -42,9 +42,11 @@ namespace CppSockets {
     {
         socklen_t len = sizeof(int);
 
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &m_type, &len);
+#ifndef OS_APPLE
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
+#endif
     }
 
     // TODO: more error handling arround is_connected == false and sockfd == INVALID in IO calls
