@@ -4,16 +4,10 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Wed May 10 09:47:41 2023 Francois Michaut
+## Last update Sat Dec  2 17:46:03 2023 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for CppSockets
 ##
-
-cmake_minimum_required (VERSION 3.15)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-project(CppSockets-Tests VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 
@@ -22,13 +16,11 @@ create_test_sourcelist(TestFiles test_driver.cpp
 )
 
 add_executable(unit_tests
-  ../source/Address.cpp
-  ../source/Socket.cpp
-  ../source/IPv4.cpp
   ${TestFiles}
 )
 
 target_compile_definitions(unit_tests PRIVATE DEBUG)
+target_link_libraries(unit_tests cppsockets)
 
 foreach (test ${TestFiles})
   if (NOT ${test} STREQUAL test_driver.cpp)
@@ -41,9 +33,3 @@ foreach (test ${TestFiles})
     endif()
   endif()
 endforeach ()
-
-include_directories(
-  "${CMAKE_CURRENT_BINARY_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../include"
-)

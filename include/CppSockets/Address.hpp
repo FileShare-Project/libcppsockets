@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Sat Nov 11 16:57:43 2023 Francois Michaut
+** Last update Sat Dec  9 08:52:22 2023 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -44,6 +44,7 @@ namespace CppSockets {
             Endpoint(T addr, std::uint16_t port) :
                 addr(std::move(addr)), port(port), str(makeString())
             {};
+            virtual ~Endpoint() = default;
 
             [[nodiscard]] std::uint16_t getPort() const override {
                 return port;
@@ -57,8 +58,8 @@ namespace CppSockets {
                 return str;
             }
         private:
-            std::uint16_t port;
             T addr;
+            std::uint16_t port;
             std::string str;
     };
 }

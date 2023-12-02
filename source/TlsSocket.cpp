@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Tue Nov 14 21:15:11 2023 Francois Michaut
+** Last update Sat Dec  2 11:33:00 2023 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -19,6 +19,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include <array>
 #include <sstream>
 #include <stdexcept>
 

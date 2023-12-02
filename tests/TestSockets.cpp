@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Wed Oct 12 21:33:22 2022 Francois Michaut
+** Last update Wed Dec  6 01:34:58 2023 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
@@ -25,8 +25,8 @@ int TestSockets(int, char **)
     std::string test = "Hello Network !";
     int port = 44444;
 
-    alarm(10);
-    if (child == 0) {
+    alarm(2);
+    if (child != 0) {
         Socket soc(AF_INET, SOCK_STREAM, 0);
         int ret = 0;
 
@@ -49,7 +49,7 @@ int TestSockets(int, char **)
             try {
                 soc.connect("127.0.0.1", port);
             } catch (std::exception &e) {
-                std::cerr << e.what() << std::endl;
+                std::cerr << "Got error: " << e.what() << std::endl;
             }
         }
         std::cout << "Connected !" << std::endl;

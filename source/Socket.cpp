@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Thu Nov 23 23:13:35 2023 Francois Michaut
+** Last update Sat Dec  2 17:11:28 2023 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -15,10 +15,14 @@
 
 #ifdef OS_WINDOWS
   #include <ws2tcpip.h>
+  #include <io.h>
 #else
   #include <fcntl.h>
   #include <netinet/in.h>
- // To match windows's constants
+  #include <arpa/inet.h>
+  #include <unistd.h>
+
+  // To match windows's constants
   static constexpr int INVALID_SOCKET = -1;
   static constexpr int SOCKET_ERROR = -1;
 #endif
@@ -31,8 +35,6 @@ static constexpr int BUFF_SIZE = 4096;
 #include <sstream>
 #include <stdexcept>
 
-#include <arpa/inet.h>
-#include <unistd.h>
 
 // TODO add exceptions on error retunrs
 // TODO throw custom exceptions on invalid status (eg: socket already connected)
@@ -43,7 +45,7 @@ namespace CppSockets {
         socklen_t len = sizeof(int);
 
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &m_type, &len);
-#ifndef OS_APPLE
+#if !defined (OS_APPLE) && !defined (OS_WINDOWS)
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
 #endif
@@ -82,7 +84,7 @@ namespace CppSockets {
     void Socket::close() {
         if (m_sockfd != INVALID_SOCKET) {
 #ifdef OS_WINDOWS
-            closesocket(raw_socket);
+            closesocket(m_sockfd);
 #else
             ::close(m_sockfd);
 #endif
@@ -193,12 +195,12 @@ namespace CppSockets {
         return this->bind(endpoint.getAddr().getAddress(), endpoint.getPort());
     }
 
-    int Socket::bind(std::uint32_t s_addr, uint16_t port) {
+    int Socket::bind(std::uint32_t source_addr, uint16_t port) {
         struct sockaddr_in addr = {};
         int ret = 0;
 
         addr.sin_family = m_domain;
-        addr.sin_addr.s_addr = s_addr;
+        addr.sin_addr.s_addr = source_addr;
         addr.sin_port = htons(port);
         ret = ::bind(m_sockfd, (struct sockaddr *)&addr, sizeof(addr));
         if (ret < 0) {

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Tue Nov 14 19:37:59 2023 Francois Michaut
+** Last update Sat Dec  9 08:55:07 2023 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -29,8 +29,8 @@
 #include "CppSockets/Address.hpp"
 
 namespace CppSockets {
-    static void init(bool init_ssl = true, bool init_wsa = true);
-    static void deinit(bool deinit_ssl = true, bool deinit_wsa = true);
+    void init(bool init_ssl = true, bool init_wsa = true);
+    void deinit(bool deinit_ssl = true, bool deinit_wsa = true);
 
     class Socket {
         public:
