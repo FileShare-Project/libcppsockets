@@ -13,10 +13,6 @@
 
 #include "CppSockets/OSDetection.hpp"
 
-#ifdef OS_WINDOWS
-// TODO Currently disabling TlsSocket for windows
-#else
-
 #include "CppSockets/IPv4.hpp"
 #include "CppSockets/Socket.hpp"
 
@@ -107,4 +103,3 @@ namespace CppSockets {
         return m_peer_cert;
     }
 }
-#endif

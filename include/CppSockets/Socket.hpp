@@ -12,6 +12,7 @@
 #pragma once
 
 #include "CppSockets/OSDetection.hpp"
+#include "CppSockets/SocketInit.hpp"
 
 // TODO: move the RawSocketType in CppSockets namespace
 #ifdef OS_WINDOWS
@@ -19,9 +20,11 @@
   #include <winsock2.h>
   using RawSocketType=SOCKET;
   using socklen_t=int;
+  using SockOptType=char;
 #else
   #include <sys/socket.h>
   using RawSocketType=int;
+  using SockOptType=void;
 #endif
 
 #include <memory>
@@ -29,10 +32,7 @@
 #include "CppSockets/Address.hpp"
 
 namespace CppSockets {
-    void init(bool init_ssl = true, bool init_wsa = true);
-    void deinit(bool deinit_ssl = true, bool deinit_wsa = true);
-
-    class Socket {
+    class Socket : SocketInit {
         public:
             Socket();
             Socket(int domain, int type, int protocol);
@@ -51,8 +51,8 @@ namespace CppSockets {
             std::size_t write(const char *buff, std::size_t len);
 
             int set_reuseaddr(bool value);
-            int getsockopt(int level, int optname, void *optval, socklen_t *optlen);
-            int setsockopt(int level, int optname, const void *optval, socklen_t optlen);
+            int getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen);
+            int setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen);
 
             void close();
             int connect(const IEndpoint &endpoint);
@@ -84,7 +84,7 @@ namespace CppSockets {
             static char *strerror();
 
         protected:
-            static int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
+            static int getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen);
             int bind(std::uint32_t addr, uint16_t port);
 
             int m_domain = 0;

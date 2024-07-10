@@ -12,6 +12,7 @@
 #include "CppSockets/IPv4.hpp"
 #include "CppSockets/Socket.hpp"
 
+#include <array>
 #include <stdexcept>
 
 #ifdef OS_WINDOWS
@@ -24,9 +25,10 @@ namespace CppSockets {
     IPv4::IPv4(std::uint32_t addr) :
         addr(htonl(addr))
     {
-        struct in_addr tmp {.s_addr = this->addr};
+        std::array<char, 17> buff = {0};
 
-        str = inet_ntoa(tmp);
+        inet_ntop(AF_INET, &this->addr, buff.data(), buff.size());
+        str = buff.data();
     }
 
     IPv4::IPv4(const char *addr) :

@@ -25,6 +25,9 @@
   // To match windows's constants
   static constexpr int INVALID_SOCKET = -1;
   static constexpr int SOCKET_ERROR = -1;
+
+  #include <arpa/inet.h>
+  #include <unistd.h>
 #endif
 
 static constexpr int BUFF_SIZE = 4096;
@@ -35,7 +38,6 @@ static constexpr int BUFF_SIZE = 4096;
 #include <sstream>
 #include <stdexcept>
 
-
 // TODO add exceptions on error retunrs
 // TODO throw custom exceptions on invalid status (eg: socket already connected)
 namespace CppSockets {
@@ -44,8 +46,8 @@ namespace CppSockets {
     {
         socklen_t len = sizeof(int);
 
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &m_type, &len);
-#if !defined (OS_APPLE) && !defined (OS_WINDOWS)
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (SockOptType *)&m_type, &len);
+#ifdef OS_LINUX
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
 #endif
@@ -95,7 +97,7 @@ namespace CppSockets {
         close();
     }
 
-    int Socket::getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen) {
+    int Socket::getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) {
         int ret =  ::getsockopt(fd, level, optname, optval, optlen);
 
         if (ret == SOCKET_ERROR) {
@@ -109,14 +111,12 @@ namespace CppSockets {
     }
 
     char *Socket::strerror(int err) {
-#ifdef OS_WINDOWS
-#else
         return ::strerror(err);
-#endif
     }
 
     int Socket::get_errno() {
 #ifdef OS_WINDOWS
+        return WSAGetLastError();
 #else
         return errno;
 #endif
@@ -170,14 +170,14 @@ namespace CppSockets {
     int Socket::set_reuseaddr(bool value) {
         int val = value;
 
-        return this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+        return this->setsockopt(SOL_SOCKET, SO_REUSEADDR, (SockOptType *)&val, sizeof(val));
     }
 
-    int Socket::getsockopt(int level, int optname, void *optval, socklen_t *optlen) {
+    int Socket::getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) {
         return this->getsockopt(m_sockfd, level, optname, optval, optlen);
     }
 
-    int Socket::setsockopt(int level, int optname, const void *optval, socklen_t optlen) {
+    int Socket::setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen) {
         int ret = ::setsockopt(m_sockfd, level, optname, optval, optlen);
 
         if (ret < 0) {
@@ -257,6 +257,13 @@ namespace CppSockets {
     }
 
     void Socket::set_blocking(bool val) {
+#ifdef OS_WINDOWS
+        u_long mode = val ? 0 : 1;
+        int result = ioctlsocket(m_sockfd, FIONBIO, &mode);
+        if (result != NO_ERROR) {
+            throw std::runtime_error(std::string("Failed to change socket: ") + Socket::strerror());
+        }
+#else
         int flags = fcntl(m_sockfd, F_GETFL, 0);
         int ret = flags;
 
@@ -270,6 +277,7 @@ namespace CppSockets {
         if (ret < 0) {
             throw std::runtime_error(std::string("Failed to change socket: ") + Socket::strerror());
         }
+#endif
     }
 
     RawSocketType Socket::get_fd() const {

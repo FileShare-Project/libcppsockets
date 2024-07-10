@@ -12,10 +12,6 @@
 #include "CppSockets/OSDetection.hpp"
 #include "CppSockets/TlsSocket.hpp"
 
-#ifdef OS_WINDOWS
-// TODO Currently disabling TlsSocket for windows
-#else
-
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -255,4 +251,3 @@ namespace CppSockets {
         }
     }
 }
-#endif
