@@ -95,7 +95,7 @@ jobs:
   clang-tidy:
     needs: 'build'
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && github.event_name == 'pull-request'
 
     steps:
       - name: Checkout Code
