@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug  1 09:50:33 2025 Francois Michaut
-** Last update Mon Aug  4 23:45:31 2025 Francois Michaut
+** Last update Tue Aug  5 19:08:13 2025 Francois Michaut
 **
 ** Certificate.hpp : Classes to create and manage Certificates
 */
@@ -17,12 +17,6 @@
 
 #include <cstdint>
 #include <filesystem>
-
-#if __cplusplus < 202002L
-namespace std {
-    using u8string = basic_string<unsigned char>; // NOLINT(cert-dcl58-cpp)
-}
-#endif
 
 namespace CppSockets {
     class x509NameEntry;
@@ -164,8 +158,8 @@ namespace CppSockets {
             // TODO: Get methods
 
             // TODO: Provide overloads for hardcoded time
-            void set_not_before(int offset_day, std::int64_t offset_sec, time_t *in_tm);
-            void set_not_after(int offset_day, std::int64_t offset_sec, time_t *in_tm);
+            void set_not_before(int offset_day, std::int64_t offset_sec, time_t *in_tm = nullptr);
+            void set_not_after(int offset_day, std::int64_t offset_sec, time_t *in_tm = nullptr);
 
             void set_version(std::int64_t version);
             [[nodiscard]]

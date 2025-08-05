@@ -4,13 +4,13 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Mon Aug  4 23:34:08 2025 Francois Michaut
+## Last update Tue Aug  5 19:07:23 2025 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
 
 cmake_minimum_required (VERSION 3.15)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

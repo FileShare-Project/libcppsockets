@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Sun Aug  3 22:18:06 2025 Francois Michaut
+** Last update Tue Aug  5 13:49:19 2025 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -154,13 +154,13 @@ namespace CppSockets {
         std::size_t nb = 0;
         std::size_t total;
 
-        if (SSL_peek(m_ssl.get(), buff.data(), BUFF_SIZE) <= 0) {
+        if (SSL_peek(m_ssl.get(), buff.data(), buff.size()) <= 0) {
             set_connected(false); // TODO: we should replace this with check_for_error
         }
         check_for_error("Failed to read from socket", 1); // Do not raise an error if peek failed
         total = SSL_pending(m_ssl.get());
         while (total != 0 && len != 0) {
-            nb = this->read(buff.data(), (BUFF_SIZE > len ? len : BUFF_SIZE));
+            nb = this->read(buff.data(), (buff.size() > len ? len : buff.size()));
             res << std::string(buff.data(), nb);
             total -= nb;
             if (len != -1)
