@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 20:51:23 2022 Francois Michaut
-** Last update Tue Nov 14 19:37:45 2023 Francois Michaut
+** Last update Tue Aug  5 00:01:16 2025 Francois Michaut
 **
 ** SecureSocket.hpp : TLS socket wrapper using openssl
 */
@@ -13,66 +13,48 @@
 
 #include "CppSockets/OSDetection.hpp"
 
-#include "CppSockets/IPv4.hpp"
+#include "CppSockets/SSL_Utils.hpp"
 #include "CppSockets/Socket.hpp"
 
-#include <functional>
-
-// TODO: find a better way do to this
-using BIO = struct bio_st;
-using SSL = struct ssl_st;
-using SSL_METHOD = struct ssl_method_st;
-using SSL_CTX = struct ssl_ctx_st;
-using X509 = struct x509_st;
-using RSA = struct rsa_st;
-using EVP_PKEY = struct evp_pkey_st;
-using EVP_MD = struct evp_md_st;
-using EVP_MD_CTX = struct evp_md_ctx_st;
-
 namespace CppSockets {
-    using BIO_ptr=std::unique_ptr<BIO, std::function<void(BIO *)>>;
-    using SSL_CTX_ptr=std::unique_ptr<SSL_CTX, std::function<void(SSL_CTX *)>>;
-    using SSL_ptr=std::unique_ptr<SSL, std::function<void(SSL *)>>;
-    using X509_ptr=std::unique_ptr<X509, std::function<void(X509 *)>>;
-    using RSA_ptr=std::unique_ptr<RSA, std::function<void(RSA *)>>;
-    using EVP_PKEY_ptr=std::unique_ptr<EVP_PKEY, std::function<void(EVP_PKEY *)>>;
-    using EVP_MD_ptr=std::unique_ptr<EVP_MD, std::function<void(EVP_MD *)>>;
-    using EVP_MD_CTX_ptr=std::unique_ptr<EVP_MD_CTX, std::function<void(EVP_MD_CTX *)>>;
-
     // TODO add more TLS-related functions
     class TlsSocket : public Socket {
         public:
             TlsSocket() = default;
+            // TODO: Constructor allowing application to reuse SSL_CTX objects
+            // (Maybe even a different TLS_CTX class to manage them ?)
             TlsSocket(int domain, int type, int protocol);
-            TlsSocket(Socket &&other, SSL_ptr ssl = nullptr);
-            TlsSocket(RawSocketType fd, SSL_ptr ssl = nullptr);
-            ~TlsSocket();
+            explicit TlsSocket(Socket &&other, SSL_ptr ssl = nullptr);
+            explicit TlsSocket(RawSocketType fd, SSL_ptr ssl = nullptr);
+            ~TlsSocket() noexcept;
 
             TlsSocket(const TlsSocket &other) = delete;
             TlsSocket(TlsSocket &&other) noexcept;
-            TlsSocket &operator=(const TlsSocket &other) = delete;
-            TlsSocket &operator=(TlsSocket &&other) noexcept;
+            auto operator=(const TlsSocket &other) -> TlsSocket & = delete;
+            auto operator=(TlsSocket &&other) noexcept -> TlsSocket &;
 
-            std::string read(std::size_t len = -1);
-            std::size_t read(char *buff, std::size_t size);
-            std::size_t write(const std::string &buff);
-            std::size_t write(std::string_view buff);
-            std::size_t write(const char *buff, std::size_t len);
+            auto read(std::size_t len = -1) -> std::string;
+            auto read(char *buff, std::size_t size) -> std::size_t;
+            auto write(const std::string &buff) -> std::size_t { return this->write(buff.c_str(), buff.size()); }
+            auto write(std::string_view buff) -> std::size_t { return this->write(buff.data(), buff.size()); };
+            auto write(const char *buff, std::size_t len) -> std::size_t;
 
-            void set_certificate(std::string cert_path, std::string pkey_path);
-            int connect(const IEndpoint &endpoint);
+            void set_verify(int mode, SSL_verify_cb verify_callback = nullptr);
+            void set_certificate(const std::string &cert_path, const std::string &pkey_path);
+            auto connect(const IEndpoint &endpoint) -> int;
 
-            std::shared_ptr<TlsSocket> accept(void *addr_out = nullptr);
-
-            [[nodiscard]]
-            const SSL_CTX_ptr &get_ssl_ctx() const;
-            [[nodiscard]]
-            const SSL_ptr &get_ssl() const;
-            [[nodiscard]]
-            const X509_ptr &get_client_cert() const;
+            auto accept(void *addr_out = nullptr, const SSL_CTX_ptr &ctx = nullptr) -> std::unique_ptr<TlsSocket>;
+            auto accept(const SSL_CTX_ptr &ctx) -> std::unique_ptr<TlsSocket>;
 
             [[nodiscard]]
-            const std::string tls_strerror(int ret);
+            auto get_ssl_ctx() const -> const SSL_CTX_ptr & { return m_ctx; }
+            [[nodiscard]]
+            auto get_ssl() const -> const SSL_ptr & { return m_ssl; }
+            [[nodiscard]]
+            auto get_client_cert() const -> const X509_ptr & { return m_peer_cert; }
+
+            [[nodiscard]]
+            auto tls_strerror(int ret) -> std::string;
         private:
             SSL_CTX_ptr m_ctx;
             SSL_ptr m_ssl;
@@ -80,26 +62,6 @@ namespace CppSockets {
             X509_ptr m_cert;
             EVP_PKEY_ptr m_pkey;
 
-            void check_for_error(std::string error_msg, int ret);
+            void check_for_error(const std::string &error_msg, int ret);
     };
-
-    inline std::size_t TlsSocket::write(std::string_view buff) {
-        return write(buff.data(), buff.size());
-    }
-
-    inline std::size_t TlsSocket::write(const std::string &buff) {
-        return write(buff.c_str(), buff.size());
-    }
-
-    inline const SSL_CTX_ptr &TlsSocket::get_ssl_ctx() const {
-        return m_ctx;
-    }
-
-    inline const SSL_ptr &TlsSocket::get_ssl() const {
-        return m_ssl;
-    }
-
-    inline const X509_ptr &TlsSocket::get_client_cert() const {
-        return m_peer_cert;
-    }
 }

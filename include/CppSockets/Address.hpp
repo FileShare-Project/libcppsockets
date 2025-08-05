@@ -20,19 +20,19 @@
 namespace CppSockets {
     class IAddress {
         public:
-            [[nodiscard]] virtual std::uint32_t getAddress() const = 0;
-            [[nodiscard]] virtual int getFamily() const = 0;
-            [[nodiscard]] virtual const std::string &toString() const = 0;
+            [[nodiscard]] virtual auto getAddress() const -> std::uint32_t = 0;
+            [[nodiscard]] virtual auto getFamily() const -> int = 0;
+            [[nodiscard]] virtual auto toString() const -> const std::string & = 0;
     };
 
     class IEndpoint {
         public:
-            [[nodiscard]] virtual std::uint16_t getPort() const = 0;
-            [[nodiscard]] virtual const IAddress &getAddr() const = 0;
-            [[nodiscard]] virtual const std::string &toString() const = 0;
+            [[nodiscard]] virtual auto getPort() const -> std::uint16_t = 0;
+            [[nodiscard]] virtual auto getAddr() const -> const IAddress & = 0;
+            [[nodiscard]] virtual auto toString() const -> const std::string & = 0;
 
         protected:
-            [[nodiscard]] std::string makeString() const;
+            [[nodiscard]] auto makeString() const -> std::string;
     };
 
     template <class T>
@@ -46,15 +46,15 @@ namespace CppSockets {
             {};
             virtual ~Endpoint() = default;
 
-            [[nodiscard]] std::uint16_t getPort() const override {
+            [[nodiscard]] auto getPort() const -> std::uint16_t override {
                 return port;
             }
 
-            [[nodiscard]] const T &getAddr() const override {
+            [[nodiscard]] auto getAddr() const -> const T & override {
                 return addr;
             }
 
-            [[nodiscard]] const std::string &toString() const override {
+            [[nodiscard]] auto toString() const -> const std::string & override {
                 return str;
             }
         private:

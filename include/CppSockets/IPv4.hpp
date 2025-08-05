@@ -20,9 +20,9 @@ namespace CppSockets {
             IPv4(const char *addr); // TODO add support for string. Maybe string_view ?
 
 
-            [[nodiscard]] std::uint32_t getAddress() const override;
-            [[nodiscard]] int getFamily() const override;
-            [[nodiscard]] const std::string &toString() const override;
+            [[nodiscard]] auto getAddress() const -> std::uint32_t override;
+            [[nodiscard]] auto getFamily() const -> int override;
+            [[nodiscard]] auto toString() const -> const std::string & override;
 
         private:
             std::uint32_t addr;

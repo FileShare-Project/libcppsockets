@@ -1,6 +1,11 @@
 build/
 
+libcppsockets.so
 compile_commands.json
 
 *.tmp
 *.gch
+vgcore.*
+
+.vscode/
+.cache/

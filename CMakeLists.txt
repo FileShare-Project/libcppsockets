@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Sat Dec  2 17:45:28 2023 Francois Michaut
+## Last update Mon Aug  4 23:34:08 2025 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
@@ -22,7 +22,9 @@ configure_file(include/CppSockets/Version.hpp.in include/CppSockets/Version.hpp)
 
 add_library(cppsockets
   source/Address.cpp
+  source/Certificate.cpp
   source/IPv4.cpp
+  source/SSL_Utils.cpp
   source/Socket.cpp
   source/SocketInit.cpp
   source/TlsSocket.cpp
