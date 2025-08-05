@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Sat Dec  9 08:55:07 2023 Francois Michaut
+** Last update Tue Aug  5 00:00:48 2025 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -42,51 +42,53 @@ namespace CppSockets {
             // TODO Maybe enable copy with dup(2) ?
             Socket(const Socket &other) = delete;
             Socket(Socket &&other) noexcept;
-            Socket &operator=(const Socket &other) = delete;
-            Socket &operator=(Socket &&other) noexcept;
+            auto operator=(const Socket &other) -> Socket & = delete;
+            auto operator=(Socket &&other) noexcept -> Socket &;
 
-            std::string read(std::size_t len = -1);
-            std::size_t read(char *buff, std::size_t size);
-            std::size_t write(const std::string &buff);
-            std::size_t write(const char *buff, std::size_t len);
+            auto read(std::size_t len = -1) -> std::string;
+            auto read(char *buff, std::size_t size) -> std::size_t;
+            auto write(const std::string &buff) -> std::size_t;
+            auto write(const char *buff, std::size_t len) -> std::size_t;
 
-            int set_reuseaddr(bool value);
-            int getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen);
-            int setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen);
+            auto set_reuseaddr(bool value) -> int;
+            auto getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) -> int;
+            auto setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen) -> int;
 
             void close();
-            int connect(const IEndpoint &endpoint);
-            int connect(const std::string &addr, uint16_t port);
+            auto connect(const IEndpoint &endpoint) -> int;
+            auto connect(const std::string &addr, uint16_t port) -> int;
 
-            int bind(const IEndpoint &endpoint);
-            int bind(const std::string &addr, uint16_t port);
-            int listen(int backlog);
-            std::shared_ptr<Socket> accept(void *addr_out = nullptr);
+            auto bind(const IEndpoint &endpoint) -> int;
+            auto bind(const std::string &addr, uint16_t port) -> int;
+            auto listen(int backlog) -> int;
+            auto accept(void *addr_out = nullptr) -> std::unique_ptr<Socket>;
 
             void set_blocking(bool val);
 
             [[nodiscard]]
-            RawSocketType get_fd() const; // TODO check if windows SOCKET can be
-                                          // converted to int
+            auto get_fd() const -> RawSocketType { return m_sockfd; }
             [[nodiscard]]
-            int get_type() const;
+            auto get_type() const -> int { return m_type; }
             [[nodiscard]]
-            int get_domain() const;
+            auto get_domain() const -> int { return m_domain; }
             [[nodiscard]]
-            int get_protocol() const;
+            auto get_protocol() const -> int { return m_protocol; }
+            // TODO: Allow to get Endpoint
 
             [[nodiscard]]
-            bool connected() const;
+            auto connected() const -> bool { return m_is_connected; }
 
-        public:
-            static int get_errno();
-            static char *strerror(int err);
-            static char *strerror();
+            static auto get_errno() -> int;
+            static auto strerror(int err) -> char *;
+            static auto strerror() -> char *;
 
         protected:
-            static int getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen);
-            int bind(std::uint32_t addr, uint16_t port);
+            static auto getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) -> int;
+            auto bind(std::uint32_t addr, uint16_t port) -> int;
 
+            void set_connected(bool status) { m_is_connected = status; };
+
+        private:
             int m_domain = 0;
             int m_type = 0;
             int m_protocol = 0;

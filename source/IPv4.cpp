@@ -4,13 +4,13 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 18:52:28 2022 Francois Michaut
-** Last update Sat Dec  2 16:17:43 2023 Francois Michaut
+** Last update Tue Aug  5 01:43:47 2025 Francois Michaut
 **
 ** IPv4.cpp : Implementation of IPv4 class
 */
 
+#include "CppSockets/OSDetection.hpp"
 #include "CppSockets/IPv4.hpp"
-#include "CppSockets/Socket.hpp"
 
 #include <array>
 #include <stdexcept>
@@ -34,22 +34,22 @@ namespace CppSockets {
     IPv4::IPv4(const char *addr) :
         str(addr)
     {
-        struct in_addr in;
+        struct in_addr address = {};
 
-        if (inet_pton(AF_INET, addr, &in) != 1)
+        if (inet_pton(AF_INET, addr, &address) != 1)
             throw std::runtime_error("Invalid IPv4 address");
-        this->addr = in.s_addr;
+        this->addr = address.s_addr;
     }
 
-    std::uint32_t IPv4::getAddress() const {
+    auto IPv4::getAddress() const -> std::uint32_t {
         return addr;
     }
 
-    const std::string &IPv4::toString() const {
+    auto IPv4::toString() const -> const std::string & {
         return str;
     }
 
-    int IPv4::getFamily() const {
+    auto IPv4::getFamily() const -> int {
         return AF_INET;
     }
 }

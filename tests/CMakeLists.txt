@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Sat Dec  2 17:46:03 2023 Francois Michaut
+## Last update Sat Aug  2 18:06:42 2025 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for CppSockets
 ##
@@ -23,7 +23,7 @@ target_compile_definitions(unit_tests PRIVATE DEBUG)
 target_link_libraries(unit_tests cppsockets)
 
 foreach (test ${TestFiles})
-  if (NOT ${test} STREQUAL test_driver.cpp)
+  if (NOT ${test} MATCHES "test_driver.cpp$")
     get_filename_component (DName ${test} DIRECTORY)
     get_filename_component (TName ${test} NAME_WE)
     if (DName STREQUAL "")

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Sat Dec  2 17:11:28 2023 Francois Michaut
+** Last update Tue Aug  5 00:04:25 2025 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -14,12 +14,12 @@
 #include "CppSockets/Socket.hpp"
 
 #ifdef OS_WINDOWS
-  #include <ws2tcpip.h>
   #include <io.h>
+  #include <ws2tcpip.h>
 #else
+  #include <arpa/inet.h>
   #include <fcntl.h>
   #include <netinet/in.h>
-  #include <arpa/inet.h>
   #include <unistd.h>
 
   // To match windows's constants
@@ -71,7 +71,11 @@ namespace CppSockets {
         *this = std::move(other);
     }
 
-    Socket &Socket::operator=(Socket &&other) noexcept {
+    Socket::~Socket() {
+        close();
+    }
+
+    auto Socket::operator=(Socket &&other) noexcept -> Socket & {
         if (&other == this)
             return *this;
         this->close();
@@ -83,7 +87,7 @@ namespace CppSockets {
         return *this;
     }
 
-    void Socket::close() {
+    void Socket::close() { // NOLINT(readability-make-member-function-const)
         if (m_sockfd != INVALID_SOCKET) {
 #ifdef OS_WINDOWS
             closesocket(m_sockfd);
@@ -93,28 +97,23 @@ namespace CppSockets {
         }
     }
 
-    Socket::~Socket() {
-        close();
-    }
+    auto Socket::getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) -> int {
+        int ret = ::getsockopt(fd, level, optname, optval, optlen);
 
-    int Socket::getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) {
-        int ret =  ::getsockopt(fd, level, optname, optval, optlen);
-
-        if (ret == SOCKET_ERROR) {
+        if (ret == SOCKET_ERROR)
             throw std::runtime_error(std::string("Failed to get sock opt: ") + Socket::strerror());
-        }
         return ret;
     }
 
-    char *Socket::strerror() {
+    auto Socket::strerror() -> char * {
         return Socket::strerror(Socket::get_errno());
     }
 
-    char *Socket::strerror(int err) {
+    auto Socket::strerror(int err) -> char * {
         return ::strerror(err);
     }
 
-    int Socket::get_errno() {
+    auto Socket::get_errno() -> int {
 #ifdef OS_WINDOWS
         return WSAGetLastError();
 #else
@@ -122,8 +121,8 @@ namespace CppSockets {
 #endif
     }
 
-    std::string Socket::read(std::size_t len) {
-        std::array<char, BUFF_SIZE> buff = {0};
+    auto Socket::read(std::size_t len) -> std::string {
+        std::array<char, BUFF_SIZE> buff = {0}; // TODO: Avoid deallocation/reallocation everytime ?
         std::stringstream res;
         std::size_t total = 0;
         std::size_t nb = 1;
@@ -137,126 +136,115 @@ namespace CppSockets {
         return res.str();
     }
 
-    std::size_t Socket::read(char *buff, std::size_t size) {
-        std::size_t ret;
+    auto Socket::read(char *buff, std::size_t size) -> std::size_t {
+        std::ptrdiff_t ret;
 
         if (!m_is_connected)
             throw std::runtime_error("Not connected");
         ret = ::read(m_sockfd, buff, size);
-        if (ret < 0) {
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to read from socket: ") + Socket::strerror());
-        } else if (ret == 0 && size > 0) {
+        if (ret == 0 && size > 0) {
             m_is_connected = false;
         }
         return ret;
     }
 
-    std::size_t Socket::write(const std::string &buff) {
+    auto Socket::write(const std::string &buff) -> std::size_t {
         return this->write(buff.data(), buff.size());
     }
 
-    std::size_t Socket::write(const char *buff, std::size_t len) {
-        std::size_t ret;
+    auto Socket::write(const char *buff, std::size_t len) -> std::size_t { // NOLINT(readability-make-member-function-const)
+        std::ptrdiff_t ret;
 
         if (!m_is_connected)
             throw std::runtime_error("Not connected");
         ret = ::write(m_sockfd, buff, len);
-        if (ret < 0) {
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to write to socket: ") + Socket::strerror());
-        }
         return ret;
     }
 
-    int Socket::set_reuseaddr(bool value) {
-        int val = value;
+    auto Socket::set_reuseaddr(bool value) -> int {
+        int val = static_cast<int>(value);
 
         return this->setsockopt(SOL_SOCKET, SO_REUSEADDR, (SockOptType *)&val, sizeof(val));
     }
 
-    int Socket::getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) {
-        return this->getsockopt(m_sockfd, level, optname, optval, optlen);
+    auto Socket::getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) -> int { // NOLINT(readability-make-member-function-const)
+        return CppSockets::Socket::getsockopt(m_sockfd, level, optname, optval, optlen);
     }
 
-    int Socket::setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen) {
+    auto Socket::setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen) -> int { // NOLINT(readability-make-member-function-const)
         int ret = ::setsockopt(m_sockfd, level, optname, optval, optlen);
 
-        if (ret < 0) {
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to set sock opt: ") + Socket::strerror());
-        }
         return ret;
     }
 
-    int Socket::bind(const std::string &addr, uint16_t port) {
+    auto Socket::bind(const std::string &addr, uint16_t port) -> int {
         return this->bind(inet_addr(addr.c_str()), port);
     }
 
-    int Socket::bind(const IEndpoint &endpoint) {
-        // TODO: this only works for IPv4. Need to switch getFamily() to handle IPv6 / AF_UNIX ...
+    auto Socket::bind(const IEndpoint &endpoint) -> int {
+        // TODO: this only works for IPv4. Need to switch getFamily() to handle
+        // IPv6 / AF_UNIX ...
         return this->bind(endpoint.getAddr().getAddress(), endpoint.getPort());
     }
 
-    int Socket::bind(std::uint32_t source_addr, uint16_t port) {
+    auto Socket::bind(std::uint32_t source_addr, uint16_t port) -> int { // NOLINT(readability-make-member-function-const)
         struct sockaddr_in addr = {};
         int ret = 0;
 
         addr.sin_family = m_domain;
         addr.sin_addr.s_addr = source_addr;
         addr.sin_port = htons(port);
-        ret = ::bind(m_sockfd, (struct sockaddr *)&addr, sizeof(addr));
-        if (ret < 0) {
+        ret = ::bind(m_sockfd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr));
+
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to bind socket: ") + Socket::strerror());
-        }
         return ret;
     }
 
-    int Socket::connect(const std::string &addr, uint16_t port) {
+    auto Socket::connect(const std::string &addr, uint16_t port) -> int {
         return this->connect(Endpoint<IPv4>(IPv4(addr.c_str()), port));
     }
 
-    int Socket::connect(const IEndpoint &endpoint) {
+    auto Socket::connect(const IEndpoint &endpoint) -> int {
         struct sockaddr_in addr = {0};
         int ret = 0;
 
         addr.sin_addr.s_addr = endpoint.getAddr().getAddress();
         addr.sin_port = htons(endpoint.getPort());
         addr.sin_family = endpoint.getAddr().getFamily();
-        ret = ::connect(m_sockfd, (const struct sockaddr *)&addr, sizeof(addr));
-        if (ret < 0) {
+        ret = ::connect(m_sockfd, reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.toString() + " : " + Socket::strerror());
-        }
         m_is_connected = ret == 0;
         return ret;
     }
 
-    bool Socket::connected() const {
-        return m_is_connected;
-    }
-
-    int Socket::listen(int backlog) {
+    auto Socket::listen(int backlog) -> int { // NOLINT(readability-make-member-function-const)
         int ret = ::listen(m_sockfd, backlog);
 
-        if (ret < 0) {
+        if (ret < 0)
             throw std::runtime_error(std::string("Failed to listen socket: ") + Socket::strerror());
-        }
         return ret;
     }
 
-    std::shared_ptr<Socket> Socket::accept(void *addr_out) {
+    auto Socket::accept(void *addr_out) -> std::unique_ptr<Socket> { // NOLINT(readability-make-member-function-const)
         int fd = ::accept(m_sockfd, nullptr, nullptr);
-        int domain = 0;
-        int type = 0;
-        int protocol = 0;
 
         if (addr_out != nullptr) {
             // TODO figure it out
         }
-        if (fd == INVALID_SOCKET) {
+        if (fd == INVALID_SOCKET)
             return nullptr;
-        }
-        return std::shared_ptr<Socket>(new Socket(fd, true));
+        return std::make_unique<Socket>(fd, true);
     }
 
-    void Socket::set_blocking(bool val) {
+    void Socket::set_blocking(bool val) { // NOLINT(readability-make-member-function-const)
 #ifdef OS_WINDOWS
         u_long mode = val ? 0 : 1;
         int result = ioctlsocket(m_sockfd, FIONBIO, &mode);
@@ -278,21 +266,5 @@ namespace CppSockets {
             throw std::runtime_error(std::string("Failed to change socket: ") + Socket::strerror());
         }
 #endif
-    }
-
-    RawSocketType Socket::get_fd() const {
-        return m_sockfd;
-    }
-
-    int Socket::get_domain() const {
-        return m_domain;
-    }
-
-    int Socket::get_protocol() const {
-        return m_protocol;
-    }
-
-    int Socket::get_type() const {
-        return m_type;
     }
 }

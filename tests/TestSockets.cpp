@@ -4,23 +4,31 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Wed Dec  6 01:34:58 2023 Francois Michaut
+** Last update Tue Aug  5 11:11:27 2025 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
 
+#include "CppSockets/OSDetection.hpp"
+#include "CppSockets/Socket.hpp"
+
+#ifndef OS_WINDOWS
+
+#include <iostream>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "CppSockets/Socket.hpp"
-
-#include <iostream>
+#endif
 
 using namespace CppSockets;
 
-int TestSockets(int, char **)
+int TestSockets(int /* ac */, char ** const /* av */)
 {
+#ifdef OS_WINDOWS
+    // TODO
+    return 0;
+#else
     int child = fork();
     std::string test = "Hello Network !";
     int port = 44444;
@@ -56,4 +64,5 @@ int TestSockets(int, char **)
         soc.write(test);
         return 0;
     }
+#endif
 }

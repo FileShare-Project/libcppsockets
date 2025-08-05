@@ -1,0 +1,38 @@
+Checks: '
+*,
+-llvmlibc-*,
+-google-readability-todo,
+-fuchsia-default-arguments-calls,
+-fuchsia-default-arguments-declarations,
+-cppcoreguidelines-init-variables,
+-cppcoreguidelines-pro-type-reinterpret-cast,
+-android-*,
+-altera-*,
+-llvm-namespace-comment,
+-readability-implicit-bool-conversion,
+-google-explicit-constructor,
+-fuchsia-overloaded-operator,
+
+-google-readability-braces-around-statements,
+-google-readability-namespace-comments,
+-hicpp-braces-around-statements,
+-hicpp-explicit-conversions,
+-fuchsia-trailing-return
+'
+
+WarningsAsErrors: 'bugprone-exception-escape'
+FormatStyle: 'none' # TODO: Replace with 'file' once we have a proper .clang-format file
+InheritParentConfig: true
+CheckOptions:
+  misc-include-cleaner.MissingIncludes: 'false'
+  misc-include-cleaner.IgnoreHeaders: 'CppSockets/OSDetection\.hpp'
+
+  bugprone-argument-comment.StrictMode: 1
+
+  # Readability
+  readability-braces-around-statements.ShortStatementLines: 2
+
+  readability-identifier-naming.NamespaceCase: CamelCase
+
+  readability-identifier-length.IgnoredVariableNames: "^(fd|nb|ss)$"
+  readability-identifier-length.IgnoredParameterNames: "^([n]|fd)$"
