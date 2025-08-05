@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Aug  2 22:41:35 2025 Francois Michaut
-** Last update Tue Aug  5 13:08:40 2025 Francois Michaut
+** Last update Tue Aug  5 19:12:12 2025 Francois Michaut
 **
 ** Certificate.cpp : Implementation of classes to create and manage Certificates
 */
@@ -72,19 +72,19 @@ namespace CppSockets {
     }
 
     void x509Name::add_entry(const std::string &field_name, int type, const std::u8string &data, int loc, int set) {
-        auto ret = X509_NAME_add_entry_by_txt(m_ptr.get(), field_name.c_str(), type, data.c_str(), numeric_cast<int>(data.size()), loc, set);
+        auto ret = X509_NAME_add_entry_by_txt(m_ptr.get(), field_name.c_str(), type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size()), loc, set);
 
         check_or_throw_openssl_error(ret);
     }
 
     void x509Name::add_entry(const ASN1_OBJECT *obj, int type, const std::u8string &data, int loc, int set) {
-        auto ret = X509_NAME_add_entry_by_OBJ(m_ptr.get(), obj, type, data.c_str(), numeric_cast<int>(data.size()), loc, set);
+        auto ret = X509_NAME_add_entry_by_OBJ(m_ptr.get(), obj, type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size()), loc, set);
 
         check_or_throw_openssl_error(ret);
     }
 
     void x509Name::add_entry(int nid, int type, const std::u8string &data, int loc, int set) {
-        auto ret = X509_NAME_add_entry_by_NID(m_ptr.get(), nid, type, data.c_str(), numeric_cast<int>(data.size()), loc, set);
+        auto ret = X509_NAME_add_entry_by_NID(m_ptr.get(), nid, type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size()), loc, set);
 
         check_or_throw_openssl_error(ret);
     }
@@ -129,19 +129,19 @@ namespace CppSockets {
     }
 
     x509NameEntry::x509NameEntry(const std::string &name, int type, const std::u8string &data) :
-        m_ptr(X509_NAME_ENTRY_create_by_txt(nullptr, name.c_str(), type, data.c_str(), numeric_cast<int>(data.size())))
+        m_ptr(X509_NAME_ENTRY_create_by_txt(nullptr, name.c_str(), type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size())))
     {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
 
     x509NameEntry::x509NameEntry(const ASN1_OBJECT *obj, int type, const std::u8string &data) :
-        m_ptr(X509_NAME_ENTRY_create_by_OBJ(nullptr, obj, type, data.c_str(), numeric_cast<int>(data.size())))
+        m_ptr(X509_NAME_ENTRY_create_by_OBJ(nullptr, obj, type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size())))
     {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
 
     x509NameEntry::x509NameEntry(int nid, int type, const std::u8string &data) :
-        m_ptr(X509_NAME_ENTRY_create_by_NID(nullptr, nid, type, data.c_str(), numeric_cast<int>(data.size())))
+        m_ptr(X509_NAME_ENTRY_create_by_NID(nullptr, nid, type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size())))
     {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
@@ -157,7 +157,7 @@ namespace CppSockets {
     }
 
     void x509NameEntry::set_data(int type, const std::u8string &data) {
-        auto ret = X509_NAME_ENTRY_set_data(m_ptr.get(), type, data.c_str(), numeric_cast<int>(data.size()));
+        auto ret = X509_NAME_ENTRY_set_data(m_ptr.get(), type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size()));
 
         check_or_throw_openssl_error(ret);
     }

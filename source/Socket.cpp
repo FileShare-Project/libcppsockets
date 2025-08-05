@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Tue Aug  5 00:04:25 2025 Francois Michaut
+** Last update Tue Aug  5 14:46:12 2025 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -46,7 +46,7 @@ namespace CppSockets {
     {
         socklen_t len = sizeof(int);
 
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, (SockOptType *)&m_type, &len);
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, reinterpret_cast<SockOptType *>(&m_type), &len);
 #ifdef OS_LINUX
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
         Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
@@ -128,7 +128,7 @@ namespace CppSockets {
         std::size_t nb = 1;
 
         while (nb != 0 && (len == -1 || total < len)) {
-            nb = this->read(buff.data(), BUFF_SIZE);
+            nb = this->read(buff.data(), buff.size());
             if (nb > 0) {
                 res << std::string(buff.data(), nb);
             }
@@ -168,7 +168,7 @@ namespace CppSockets {
     auto Socket::set_reuseaddr(bool value) -> int {
         int val = static_cast<int>(value);
 
-        return this->setsockopt(SOL_SOCKET, SO_REUSEADDR, (SockOptType *)&val, sizeof(val));
+        return this->setsockopt(SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<SockOptType *>(&val), sizeof(val));
     }
 
     auto Socket::getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) -> int { // NOLINT(readability-make-member-function-const)

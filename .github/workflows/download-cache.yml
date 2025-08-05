@@ -1,0 +1,22 @@
+on:
+  workflow_dispatch:
+    inputs:
+      cache-key:
+        description: 'The key of the cache to retrieve'
+        required: true
+
+jobs:
+  download_and_upload_cache:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Restore cache
+      uses: actions/cache@v4
+      with:
+        path: ./cache
+        key: ${{ inputs.cache-key }}
+
+    - name: Upload cached data as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cached-data-artifact
+        path: ./cache

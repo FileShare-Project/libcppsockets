@@ -54,30 +54,13 @@ jobs:
       - name: Set Env
         shell: bash
         run: |
-          echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> "$GITHUB_ENV"
           echo "BUILD_OUTPUT_DIR=${{ github.workspace }}/build" >> "$GITHUB_ENV"
 
-      - name: Fetch VCPKG Cache (Windows)
-        id: fetch-vcpkg-cache
+      - name: VCPKG Install (Windows)
         if: runner.os == 'Windows'
-        uses: actions/cache/restore@v4
+        uses: ./.github/workflows/windows-vcpkg
         with:
-          key: ${{ runner.os }}-${{ matrix.build_type }}-${{ hashFiles('vcpkg.json') }}
-          path: ${{ env.VCPKG_ROOT }}
-
-      - name: Install OpenSSL (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          echo "CMAKE_TOOLCHAIN_FILE=${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
-          vcpkg install
-
-      - name: Always Save VCPKG Cache (Windows)
-        if: always() && runner.os == 'Windows' && steps.fetch-vcpkg-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ steps.fetch-vcpkg-cache.outputs.cache-primary-key }}
-          path: ${{ env.VCPKG_ROOT }}
+          key: ${{ runner.os }}-${{ matrix.build_type }}
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory.
