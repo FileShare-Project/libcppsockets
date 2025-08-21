@@ -4,13 +4,15 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Tue Aug  5 13:49:19 2025 Francois Michaut
+** Last update Wed Aug 20 23:12:24 2025 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
 
 #include "CppSockets/OSDetection.hpp"
-#include "CppSockets/TlsSocket.hpp"
+#include "CppSockets/Tls/Context.hpp"
+#include "CppSockets/Tls/Socket.hpp"
+#include "CppSockets/Tls/Utils.hpp"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -36,15 +38,11 @@ namespace  {
         return ss.str();
     }
 
-    void init_ssl_socket(SSL *ssl, SSL_CTX *ctx, CppSockets::TlsSocket *socket) {
-        int success = 1;
-
-        if (!ctx || !ssl || !SSL_set_fd(ssl, socket->get_fd())) {
+    void init_ssl_socket(SSL *ssl, CppSockets::TlsSocket *socket) {
+        if (!ssl || !SSL_set_fd(ssl, socket->get_fd())) {
             throw std::runtime_error(std::string("Failed to initialize TLS socket: ") + socket->tls_strerror(0));
         }
-        success = success && SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
-        success = success && SSL_set_min_proto_version(ssl, TLS1_VERSION);
-        if (!success) {
+        if (!SSL_set_min_proto_version(ssl, TLS1_VERSION)) {
             throw std::runtime_error(std::string("Failed to select TLS version: ") + socket->tls_strerror(0));
         }
     }
@@ -54,37 +52,27 @@ namespace  {
 namespace CppSockets {
     // TODO check if base destroctor is called (need to close the socket if error is raised)
     // TODO check if needs to call SSL_shutdown in such cases
-    TlsSocket::TlsSocket(int domain, int type, int protocol) :
+    TlsSocket::TlsSocket(int domain, int type, int protocol, TlsContext ctx) :
         CppSockets::Socket(domain, type, protocol),
-        m_ctx(SSL_CTX_new(TLS_method())),
-        m_ssl((m_ctx ? SSL_new(m_ctx.get()) : nullptr)),
-        m_peer_cert(nullptr),
-        m_cert(nullptr),
-        m_pkey(nullptr)
+        m_ctx(std::move(ctx)), m_ssl((SSL_new(m_ctx.get()))), m_peer_cert(nullptr)
     {
-        init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
+        init_ssl_socket(m_ssl.get(), this);
     }
 
-    // TlsSocket::TlsSocket(RawSocketType fd, SSL_ptr ssl) :
-    //     CppSockets::Socket(fd),
-    //     m_ctx((ssl ? SSL_get_SSL_CTX(ssl.get()) : SSL_CTX_new(TLS_method())), SSL_CTX_free),
-    //     m_ssl(ssl ? std::move(ssl) : (m_ctx ? SSL_ptr(SSL_new(m_ctx.get()), SSL_free) : nullptr)),
-    //     m_peer_cert(nullptr, X509_free),
-    //     m_cert(nullptr, X509_free),
-    //     m_pkey(nullptr, EVP_PKEY_free)
-    // {
-    //     init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
-    // }
+    TlsSocket::TlsSocket(Socket &&other, TlsContext ctx) :
+        CppSockets::Socket(std::move(other)), // TODO: if socket is not connected, at that moment, does it break ?
+        m_ctx(std::move(ctx)), m_ssl(SSL_ptr(SSL_new(m_ctx.get()))), m_peer_cert(nullptr)
+    {
+        init_ssl_socket(m_ssl.get(), this);
+    }
 
     TlsSocket::TlsSocket(Socket &&other, SSL_ptr ssl) :
         CppSockets::Socket(std::move(other)), // TODO: if socket is not connected, at that moment, does it break ?
-        m_ctx((ssl ? SSL_get_SSL_CTX(ssl.get()) : SSL_CTX_new(TLS_method()))),
-        m_ssl(ssl ? std::move(ssl) : (m_ctx ? SSL_ptr(SSL_new(m_ctx.get())) : nullptr)),
-        m_peer_cert(nullptr),
-        m_cert(nullptr),
-        m_pkey(nullptr)
+        m_ctx({ssl ? SSL_get_SSL_CTX(ssl.get()) : SSL_CTX_new(TLS_method()), !ssl}),
+        m_ssl(ssl ? std::move(ssl) : SSL_ptr(SSL_new(m_ctx.get()))),
+        m_peer_cert(nullptr)
     {
-        init_ssl_socket(m_ssl.get(), m_ctx.get(), this);
+        init_ssl_socket(m_ssl.get(), this);
     }
 
     TlsSocket::~TlsSocket() noexcept {
@@ -106,16 +94,14 @@ namespace CppSockets {
 
     TlsSocket::TlsSocket(TlsSocket &&other) noexcept :
         Socket(std::move(other)), m_ctx(std::move(other.m_ctx)),
-        m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert)),
-        m_cert(std::move(other.m_cert)), m_pkey(std::move(other.m_pkey))
+        m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert))
     {}
 
     auto TlsSocket::operator=(TlsSocket &&other) noexcept -> TlsSocket & {
+        std::swap(m_ssl, other.m_ssl);
+
         m_ctx = std::move(other.m_ctx);
-        m_ssl = std::move(other.m_ssl);
         m_peer_cert = std::move(other.m_peer_cert);
-        m_cert = std::move(other.m_cert);
-        m_pkey = std::move(other.m_pkey),
 
         Socket::operator=(std::move(other));
         return *this;
@@ -130,21 +116,17 @@ namespace CppSockets {
     void TlsSocket::set_certificate(const std::string &cert_path, const std::string &pkey_path) {
         BIO_ptr cert(BIO_new_file(cert_path.c_str(), "r"));
         BIO_ptr pkey(BIO_new_file(pkey_path.c_str(), "r"));
-        // TODO: handle pkey password: SSL_CTX_set_default_passwd_cb or PEM_read_bio_X509 last 2 args
+        // TODO: handle pkey password: SSL_set_default_passwd_cb or PEM_read_bio_X509 last 2 args
         X509_ptr x509(PEM_read_bio_X509(cert.get(), nullptr, nullptr, nullptr));
         EVP_PKEY_ptr evp_pkey(PEM_read_bio_PrivateKey(pkey.get(), nullptr, nullptr, nullptr));
 
-        // TODO: While setting it on the CTX makes sense imo (since accepted sockets will inherit this), an application
-        // might not want that behavior. Need to provide alertnate ways to set certificate on CTX vs SSL
-        if (SSL_CTX_use_certificate(m_ctx.get(), x509.get()) <= 0) {
+        if (SSL_use_certificate(m_ssl.get(), x509.get()) <= 0) {
             throw std::runtime_error(std::string("Failed to set certificate: ") + TlsSocket::tls_strerror(0));
         }
-        m_cert = std::move(x509);
 
-        if (SSL_CTX_use_PrivateKey(m_ctx.get(), evp_pkey.get()) <= 0 ) {
+        if (SSL_use_PrivateKey(m_ssl.get(), evp_pkey.get()) <= 0 ) {
             throw std::runtime_error(std::string("Failed to set private key: ") + TlsSocket::tls_strerror(0));
         }
-        m_pkey = std::move(evp_pkey);
     }
 
     // TODO add SSL_get_shutdown checks in read operations
@@ -209,38 +191,26 @@ namespace CppSockets {
         return ret;
     }
 
-    auto TlsSocket::accept(const SSL_CTX_ptr &ctx) -> std::unique_ptr<TlsSocket> {
-        return accept(nullptr, ctx);
-    }
-
-    auto TlsSocket::accept(void *addr_out, const SSL_CTX_ptr &ctx) -> std::unique_ptr<TlsSocket> {
+    auto TlsSocket::accept(void *addr_out, TlsContext ctx) -> std::unique_ptr<TlsSocket> {
         std::unique_ptr<Socket> res = Socket::accept(addr_out);
         std::unique_ptr<TlsSocket> tls;
         int ssl_ret = 0;
-        SSL_CTX *raw_ctx = ctx.get();
 
         if (!res) {
             return nullptr;
         }
-        if (!raw_ctx) {
-            raw_ctx = m_ctx.get();
-        }
 
-        // TODO: Not really sure we should do this. The TlsSockets shouldn't own the CTX.
-        // But since its already ref-counted, a shared_ptr doesnt make sense...
-        // Currently required cause the Constructor will get the CTX from the SSL object, and place it in a unique_ptr.
-        // Which means if will call CTX_free on TlsSocket destroyed. So we need to up_ref so it doesnt free for real.
-        if (SSL_CTX_up_ref(raw_ctx) == 0) {
-            throw  std::runtime_error("Failed to DUP SSL_CTX: " + TlsSocket::tls_strerror(0));
-        }
-
-        tls = std::make_unique<TlsSocket>(std::move(*res.release()), SSL_ptr(SSL_new(raw_ctx)));
+        tls = std::make_unique<TlsSocket>(std::move(*res), std::move(ctx));
         ssl_ret = SSL_accept(tls->get_ssl().get());
         if (ssl_ret <= 0) {
             throw std::runtime_error("Failed to accept TLS connection: " + TlsSocket::tls_strerror(ssl_ret));
         }
-        tls->m_peer_cert.reset(SSL_get_peer_certificate(m_ssl.get()));
+        tls->m_peer_cert.reset(SSL_get_peer_certificate(tls->get_ssl().get()));
         return tls;
+    }
+
+    auto TlsSocket::get_ssl_ctx() const -> TlsContext {
+        return {SSL_get_SSL_CTX(m_ssl.get()), false};
     }
 
     auto TlsSocket::tls_strerror(int ret) -> std::string {

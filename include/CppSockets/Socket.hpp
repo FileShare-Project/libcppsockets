@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Tue Aug  5 00:00:48 2025 Francois Michaut
+** Last update Wed Aug 20 14:01:21 2025 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -12,7 +12,7 @@
 #pragma once
 
 #include "CppSockets/OSDetection.hpp"
-#include "CppSockets/SocketInit.hpp"
+#include "CppSockets/internal/SocketInit.hpp"
 
 // TODO: move the RawSocketType in CppSockets namespace
 #ifdef OS_WINDOWS
@@ -65,18 +65,13 @@ namespace CppSockets {
 
             void set_blocking(bool val);
 
-            [[nodiscard]]
-            auto get_fd() const -> RawSocketType { return m_sockfd; }
-            [[nodiscard]]
-            auto get_type() const -> int { return m_type; }
-            [[nodiscard]]
-            auto get_domain() const -> int { return m_domain; }
-            [[nodiscard]]
-            auto get_protocol() const -> int { return m_protocol; }
+            [[nodiscard]] auto get_fd() const -> RawSocketType { return m_sockfd; }
+            [[nodiscard]] auto get_type() const -> int { return m_type; }
+            [[nodiscard]] auto get_domain() const -> int { return m_domain; }
+            [[nodiscard]] auto get_protocol() const -> int { return m_protocol; }
             // TODO: Allow to get Endpoint
 
-            [[nodiscard]]
-            auto connected() const -> bool { return m_is_connected; }
+            [[nodiscard]] auto connected() const -> bool { return m_is_connected; }
 
             static auto get_errno() -> int;
             static auto strerror(int err) -> char *;

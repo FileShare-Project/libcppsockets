@@ -4,36 +4,20 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Aug  2 22:41:35 2025 Francois Michaut
-** Last update Tue Aug  5 19:12:12 2025 Francois Michaut
+** Last update Wed Aug 20 17:05:49 2025 Francois Michaut
 **
 ** Certificate.cpp : Implementation of classes to create and manage Certificates
 */
 
-#include "CppSockets/Certificate.hpp"
-#include "CppSockets/SSL_Utils.hpp"
+#include "CppSockets/Tls/Certificate.hpp"
+#include "CppSockets/Tls/Utils.hpp"
+
+#include "CppSockets/SslMacros.hpp"
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
 #include <stdexcept>
-
-#define REQUIRED_PTR(ptr, name)                                                \
-  if (!ptr) {                                                                  \
-    throw std::runtime_error("Failed to create " name);                        \
-  }
-
-#define ASSIGNMENT_OPERATOR(type)                                              \
-    if (this == &other) {                                                      \
-        return *this;                                                          \
-    }                                                                          \
-                                                                               \
-    type *dup = type##_dup(other.m_ptr.get());                                 \
-                                                                               \
-    if (dup == nullptr) {                                                      \
-        throw std::runtime_error("Failed to dup ##type##");                    \
-    }                                                                          \
-    this->m_ptr.reset(dup);                                                    \
-    return *this;                                                              \
 
 namespace {
     template<typename Dst, typename Src>
@@ -60,6 +44,14 @@ namespace CppSockets {
     {
         REQUIRED_PTR(m_ptr, "X509_NAME")
     }
+
+    x509Name::x509Name(X509_NAME *ptr, bool own) :
+        m_ptr(ptr), m_own(own)
+    {
+        REQUIRED_PTR(m_ptr, "X509_NAME")
+    }
+
+    MAKE_DESTRUCTOR(x509Name)
 
     auto x509Name::operator=(const x509Name &other) -> x509Name & {
         ASSIGNMENT_OPERATOR(X509_NAME)
@@ -93,10 +85,22 @@ namespace CppSockets {
         return X509_NAME_entry_count(m_ptr.get());
     }
 
-    auto x509Name::get_entry(int loc) const -> x509NameEntry {
-        X509_NAME_ENTRY_ptr ptr{check_or_throw_openssl_error(X509_NAME_get_entry(m_ptr.get(), loc))};
+    auto x509Name::get_entry_by_index(int idx) const -> x509NameEntry {
+        X509_NAME_ENTRY *ptr{check_or_throw_openssl_error(X509_NAME_get_entry(m_ptr.get(), idx))};
 
-        return {std::move(ptr)};
+        return {ptr, false};
+    }
+
+    auto x509Name::get_entry(int nid, int lastpos) const -> x509NameEntry {
+        int index = get_index(nid, lastpos);
+
+        return get_entry_by_index(index);
+    }
+
+    auto x509Name::get_entry(const ASN1_OBJECT *obj, int lastpos) const -> x509NameEntry {
+        int index = get_index(obj, lastpos);
+
+        return get_entry_by_index(index);
     }
 
     auto x509Name::delete_entry(int loc) -> x509NameEntry {
@@ -128,6 +132,12 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
 
+    x509NameEntry::x509NameEntry(X509_NAME_ENTRY *ptr, bool own) :
+        m_ptr(ptr), m_own(own)
+    {
+        REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
+    }
+
     x509NameEntry::x509NameEntry(const std::string &name, int type, const std::u8string &data) :
         m_ptr(X509_NAME_ENTRY_create_by_txt(nullptr, name.c_str(), type, reinterpret_cast<const unsigned char *>(data.c_str()), numeric_cast<int>(data.size())))
     {
@@ -146,6 +156,8 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
 
+    MAKE_DESTRUCTOR(x509NameEntry)
+
     auto x509NameEntry::operator=(const x509NameEntry &other) -> x509NameEntry & {
         ASSIGNMENT_OPERATOR(X509_NAME_ENTRY)
     }
@@ -162,11 +174,11 @@ namespace CppSockets {
         check_or_throw_openssl_error(ret);
     }
 
-    auto x509NameEntry::get_object() const -> ASN1_OBJECT * {
+    auto x509NameEntry::get_object() const -> const ASN1_OBJECT * {
         return check_or_throw_openssl_error(X509_NAME_ENTRY_get_object(m_ptr.get()));
     }
 
-    auto x509NameEntry::get_data() const -> ASN1_STRING * {
+    auto x509NameEntry::get_data() const -> const ASN1_STRING * {
         return check_or_throw_openssl_error(X509_NAME_ENTRY_get_data(m_ptr.get()));
     }
 }
@@ -185,6 +197,12 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509_EXTENSION")
     }
 
+    x509Extension::x509Extension(X509_EXTENSION *ptr, bool own) :
+        m_ptr(ptr), m_own(own)
+    {
+        REQUIRED_PTR(m_ptr, "X509_EXTENSION")
+    }
+
     x509Extension::x509Extension(int nid, int crit, ASN1_OCTET_STRING *data) :
         m_ptr(X509_EXTENSION_create_by_NID(nullptr, nid, crit, data))
     {
@@ -196,6 +214,8 @@ namespace CppSockets {
     {
         REQUIRED_PTR(m_ptr, "X509_EXTENSION")
     }
+
+    MAKE_DESTRUCTOR(x509Extension)
 
     auto x509Extension::operator=(const x509Extension &other) -> x509Extension & {
         ASSIGNMENT_OPERATOR(X509_EXTENSION)
@@ -234,11 +254,19 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509")
     }
 
-    x509Certificate::x509Certificate(X509_ptr x509) :
-        m_ptr(std::move(x509))
+    x509Certificate::x509Certificate(X509_ptr ptr) :
+        m_ptr(std::move(ptr))
     {
         REQUIRED_PTR(m_ptr, "X509")
     }
+
+    x509Certificate::x509Certificate(X509 *ptr, bool own) :
+        m_ptr(ptr), m_own(own)
+    {
+        REQUIRED_PTR(m_ptr, "X509")
+    }
+
+    MAKE_DESTRUCTOR(x509Certificate)
 
     x509Certificate::x509Certificate(const std::filesystem::path &pem_file_path) {
         load(pem_file_path);
@@ -273,6 +301,30 @@ namespace CppSockets {
         }
     }
 
+    auto x509Certificate::get_not_before() const -> const ASN1_TIME * {
+        return X509_get0_notBefore(m_ptr.get());
+    }
+
+    auto x509Certificate::get_not_after() const -> const ASN1_TIME * {
+        return X509_get0_notAfter(m_ptr.get());
+    }
+
+    auto x509Certificate::get_serial_number() const -> ASN1_INTEGER * {
+        return X509_get_serialNumber(m_ptr.get());
+    }
+
+    auto x509Certificate::get_pubkey() const -> const EVP_PKEY * {
+        return check_or_throw_openssl_error(X509_get0_pubkey(m_ptr.get()));
+    }
+
+    auto x509Certificate::get_issuer_name() const -> x509Name {
+        return {X509_get_issuer_name(m_ptr.get()), false};
+    }
+
+    auto x509Certificate::get_subject_name() const -> x509Name {
+        return {X509_get_subject_name(m_ptr.get()), false};
+    }
+
     void x509Certificate::set_not_before(int offset_day, std::int64_t offset_sec, time_t *in_tm) {
         ASN1_TIME *not_before = X509_getm_notBefore(m_ptr.get());
 
@@ -289,7 +341,6 @@ namespace CppSockets {
         }
     }
 
-
     void x509Certificate::set_version(std::int64_t version) {
         if (!X509_set_version(m_ptr.get(), version)) {
             throw std::runtime_error("Failed to set version");
@@ -298,14 +349,6 @@ namespace CppSockets {
 
     auto x509Certificate::get_version() const -> std::int64_t {
         return X509_get_version(m_ptr.get());
-    }
-
-    void x509Certificate::set_serial_number(int64_t serial_number) {
-        ASN1_INTEGER *ptr = X509_get_serialNumber(m_ptr.get());
-
-        if (!ASN1_INTEGER_set_int64(ptr, serial_number)) {
-            throw std::runtime_error("Failed to set serial number");
-        }
     }
 
     void x509Certificate::set_serial_number(uint64_t serial_number) {
@@ -367,12 +410,12 @@ namespace CppSockets {
     }
 
     auto x509Certificate::get_extension(std::uint32_t loc) const -> x509Extension {
-        X509_EXTENSION_ptr ptr {X509_get_ext(m_ptr.get(), numeric_cast<int>(loc))};
+        X509_EXTENSION *ptr {X509_get_ext(m_ptr.get(), numeric_cast<int>(loc))};
 
         if (!ptr) {
             throw std::runtime_error("Failed to get extension");
         }
-        return {std::move(ptr)};
+        return {ptr, false};
     }
 
     auto x509Certificate::get_extension_by(int nid, int lastpos) const -> x509Extension {
@@ -408,7 +451,7 @@ namespace CppSockets {
         if (ret < 0) {
             throw std::runtime_error("Failed to check certificate self-signed");
         }
-        return ret;
+        return ret == 1;
     }
 
     auto x509Certificate::verify(const EVP_PKEY_ptr &pkey) const -> bool {
@@ -417,7 +460,16 @@ namespace CppSockets {
         if (ret < 0) {
             throw std::runtime_error("Failed to check certificate signature");
         }
-        return ret;
+        return ret == 1;
+    }
+
+    auto x509Certificate::verify() const -> bool {
+        auto ret = X509_verify(m_ptr.get(), X509_get0_pubkey(m_ptr.get()));
+
+        if (ret < 0) {
+            throw std::runtime_error("Failed to check certificate signature");
+        }
+        return ret == 1;
     }
 
     void x509Certificate::sign(const EVP_PKEY_ptr &pkey, const EVP_MD *digest) {
