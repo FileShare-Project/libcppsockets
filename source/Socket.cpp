@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Tue Aug  5 14:46:12 2025 Francois Michaut
+** Last update Wed Aug 20 12:59:14 2025 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -55,7 +55,8 @@ namespace CppSockets {
 
     // TODO: more error handling arround is_connected == false and sockfd == INVALID in IO calls
     Socket::Socket() :
-        m_sockfd(INVALID_SOCKET)
+        m_sockfd(INVALID_SOCKET) // TODO: Currently using this constructor results in an UNSUABLE socket.
+                                 // That's bad -> fix it.
     {}
 
     Socket::Socket(int domain, int type, int protocol) :
@@ -65,24 +66,20 @@ namespace CppSockets {
             throw std::runtime_error(std::string("Failed to create socket : ") + std::strerror(errno));
     }
 
+    Socket::~Socket() {
+        close();
+    }
+
     Socket::Socket(Socket &&other) noexcept :
         m_sockfd(INVALID_SOCKET)
     {
         *this = std::move(other);
     }
 
-    Socket::~Socket() {
-        close();
-    }
-
     auto Socket::operator=(Socket &&other) noexcept -> Socket & {
-        if (&other == this)
-            return *this;
-        this->close();
+        std::swap(m_sockfd, other.m_sockfd);
 
-        m_sockfd = other.m_sockfd;
         m_domain = other.m_domain;
-        other.m_sockfd = INVALID_SOCKET;
         m_is_connected = other.m_is_connected;
         return *this;
     }
@@ -190,7 +187,7 @@ namespace CppSockets {
     auto Socket::bind(const IEndpoint &endpoint) -> int {
         // TODO: this only works for IPv4. Need to switch getFamily() to handle
         // IPv6 / AF_UNIX ...
-        return this->bind(endpoint.getAddr().getAddress(), endpoint.getPort());
+        return this->bind(endpoint.get_addr().get_address(), endpoint.get_port());
     }
 
     auto Socket::bind(std::uint32_t source_addr, uint16_t port) -> int { // NOLINT(readability-make-member-function-const)
@@ -215,12 +212,13 @@ namespace CppSockets {
         struct sockaddr_in addr = {0};
         int ret = 0;
 
-        addr.sin_addr.s_addr = endpoint.getAddr().getAddress();
-        addr.sin_port = htons(endpoint.getPort());
-        addr.sin_family = endpoint.getAddr().getFamily();
+        addr.sin_addr.s_addr = endpoint.get_addr().get_address();
+        addr.sin_port = htons(endpoint.get_port());
+        addr.sin_family = endpoint.get_addr().get_family();
+        // TODO: If connected close / reconnect
         ret = ::connect(m_sockfd, reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
         if (ret < 0)
-            throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.toString() + " : " + Socket::strerror());
+            throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.to_string() + " : " + Socket::strerror());
         m_is_connected = ret == 0;
         return ret;
     }

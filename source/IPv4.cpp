@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 18:52:28 2022 Francois Michaut
-** Last update Tue Aug  5 01:43:47 2025 Francois Michaut
+** Last update Wed Aug 20 12:58:26 2025 Francois Michaut
 **
 ** IPv4.cpp : Implementation of IPv4 class
 */
@@ -41,15 +41,15 @@ namespace CppSockets {
         this->addr = address.s_addr;
     }
 
-    auto IPv4::getAddress() const -> std::uint32_t {
+    auto IPv4::get_address() const -> std::uint32_t {
         return addr;
     }
 
-    auto IPv4::toString() const -> const std::string & {
+    auto IPv4::to_string() const -> const std::string & {
         return str;
     }
 
-    auto IPv4::getFamily() const -> int {
+    auto IPv4::get_family() const -> int {
         return AF_INET;
     }
 }

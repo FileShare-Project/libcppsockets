@@ -4,13 +4,13 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Sep 15 14:24:25 2022 Francois Michaut
-** Last update Tue May  9 23:34:46 2023 Francois Michaut
+** Last update Wed Aug 20 14:00:59 2025 Francois Michaut
 **
 ** init.cpp : Startup/Cleanup functions implementation
 */
 
 #include "CppSockets/OSDetection.hpp"
-#include "CppSockets/SocketInit.hpp"
+#include "CppSockets/internal/SocketInit.hpp"
 
 #include <stdexcept>
 #include <string>
