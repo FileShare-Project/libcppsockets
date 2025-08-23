@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Mon Feb 14 19:35:41 2022 Francois Michaut
-## Last update Sat Aug  2 18:06:42 2025 Francois Michaut
+## Last update Fri Aug 22 21:12:37 2025 Francois Michaut
 ##
 ## CMakeLists.txt : CMake building and running tests for CppSockets
 ##
@@ -12,6 +12,8 @@
 include(CTest)
 
 create_test_sourcelist(TestFiles test_driver.cpp
+  Tls/TestContext.cpp
+
   TestSockets.cpp
 )
 

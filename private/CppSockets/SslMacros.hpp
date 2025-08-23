@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug 20 16:54:02 2025 Francois Michaut
-** Last update Wed Aug 20 18:59:18 2025 Francois Michaut
+** Last update Fri Aug 22 21:46:55 2025 Francois Michaut
 **
 ** SslMacros.hpp : Private Macros to define SSL wrappers
 */
@@ -22,7 +22,7 @@
     type *dup = type##_dup(other.m_ptr.get());                                                      \
                                                                                                     \
     if (dup == nullptr) {                                                                           \
-        throw std::runtime_error("Failed to dup ##type##");                                         \
+        throw std::runtime_error("Failed to dup " #type);                                          \
     }                                                                                               \
     if (!this->m_own) {                                                                             \
         (void)this->m_ptr.release();                                                                \

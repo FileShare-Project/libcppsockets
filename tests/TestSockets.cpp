@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Tue Aug  5 11:11:27 2025 Francois Michaut
+** Last update Fri Aug 22 21:11:25 2025 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
@@ -23,7 +23,7 @@
 
 using namespace CppSockets;
 
-int TestSockets(int /* ac */, char ** const /* av */)
+auto TestSockets(int /* ac */, char ** const /* av */) -> int
 {
 #ifdef OS_WINDOWS
     // TODO
