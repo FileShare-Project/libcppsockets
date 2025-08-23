@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 20:51:23 2022 Francois Michaut
-** Last update Wed Aug 20 23:11:28 2025 Francois Michaut
+** Last update Fri Aug 22 21:55:50 2025 Francois Michaut
 **
 ** SecureSocket.hpp : TLS socket wrapper using openssl
 */
@@ -33,6 +33,8 @@ namespace CppSockets {
             TlsSocket(TlsSocket &&other) noexcept;
             auto operator=(const TlsSocket &other) -> TlsSocket & = delete;
             auto operator=(TlsSocket &&other) noexcept -> TlsSocket &;
+
+            void close();
 
             auto read(std::size_t len = -1) -> std::string;
             auto read(char *buff, std::size_t size) -> std::size_t;

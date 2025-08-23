@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Wed Aug 20 23:12:24 2025 Francois Michaut
+** Last update Fri Aug 22 21:57:23 2025 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -77,34 +77,43 @@ namespace CppSockets {
 
     TlsSocket::~TlsSocket() noexcept {
         if (m_ssl && this->connected()) {
-            int ret = SSL_shutdown(m_ssl.get()); // TODO: log failure
+            // TODO: Better shutdown mecanics
+            int ret = SSL_shutdown(m_ssl.get());
 
-            if (ret == 0) {
-                try {
-                    while (this->connected()) {
-                        this->read();
-                    }
-                } catch (std::runtime_error &e) {
-                    // TODO: What ?
-                }
-                SSL_shutdown(m_ssl.get()); // TODO: log failure
-            }
+            // if (ret == 1) {
+            //     // Peer also closed -> We can leave.
+            // } else if (ret == 0) {
+            //     // Peer didn't send, but we can't wait in the Destructor
+            // } else {
+            //     // TODO: log failure
+            // }
         }
     }
 
-    TlsSocket::TlsSocket(TlsSocket &&other) noexcept :
-        Socket(std::move(other)), m_ctx(std::move(other.m_ctx)),
-        m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert))
-    {}
+    TlsSocket::TlsSocket(TlsSocket &&other) noexcept {
+        *this = std::move(other);
+    }
 
     auto TlsSocket::operator=(TlsSocket &&other) noexcept -> TlsSocket & {
-        std::swap(m_ssl, other.m_ssl);
-
+        m_ssl = std::move(other.m_ssl);
         m_ctx = std::move(other.m_ctx);
         m_peer_cert = std::move(other.m_peer_cert);
 
         Socket::operator=(std::move(other));
         return *this;
+    }
+
+    void TlsSocket::close() {
+        int ret = SSL_shutdown(m_ssl.get());
+
+        if (ret == 1) {
+            return Socket::close();
+        }
+        // if (ret == 0) {
+        //     // TODO: wait for peer
+        // } else {
+        //     // TODO: Log failure
+        // }
     }
 
     void TlsSocket::set_verify(int mode, SSL_verify_cb verify_callback) {

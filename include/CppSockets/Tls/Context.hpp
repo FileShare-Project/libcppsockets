@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug 20 14:13:44 2025 Francois Michaut
-** Last update Thu Aug 21 14:14:45 2025 Francois Michaut
+** Last update Fri Aug 22 21:43:02 2025 Francois Michaut
 **
 ** Context.hpp : Context for TLS sockets
 */
@@ -23,9 +23,9 @@ namespace CppSockets {
             TlsContext(SSL_CTX *ptr, bool own = true);
 
             TlsContext(const TlsContext &other) { *this = other; }
-            TlsContext(TlsContext &&other) noexcept = default;
+            TlsContext(TlsContext &&other) noexcept;
             auto operator=(const TlsContext &other) -> TlsContext &;
-            auto operator=(TlsContext &&other) noexcept -> TlsContext & = default;
+            auto operator=(TlsContext &&other) noexcept -> TlsContext &;
 
             ~TlsContext();
 
