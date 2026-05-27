@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Wed Aug 20 12:57:17 2025 Francois Michaut
+** Last update Sat Jun 20 09:12:58 2026 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <type_traits>
 
@@ -35,6 +36,9 @@ namespace CppSockets {
             [[nodiscard]] virtual auto get_addr() const -> const IAddress & = 0;
             [[nodiscard]] virtual auto to_string() const -> const std::string & = 0;
 
+            static auto from_string(std::string endpoint) -> std::shared_ptr<CppSockets::IEndpoint>;
+            static auto from_string(std::string_view endpoint) -> std::shared_ptr<CppSockets::IEndpoint>;
+
         protected:
             [[nodiscard]] auto make_string() const -> std::string;
     };
@@ -42,14 +46,19 @@ namespace CppSockets {
     template <class T>
     class Endpoint : public IEndpoint {
         // TODO: Replace with new C++ requires
-        static_assert(std::is_base_of<IAddress, T>::value,
+        static_assert(std::is_base_of_v<IAddress, T>,
             "Endpoint address must derive from IAddress"
         );
         public:
             Endpoint(T addr, std::uint16_t port) :
                 addr(std::move(addr)), port(port), str(make_string())
             {};
-             ~Endpoint() override = default;
+            Endpoint(const Endpoint &other) = default;
+            Endpoint(Endpoint &&other) noexcept = default;
+            ~Endpoint() override = default;
+
+            auto operator=(const Endpoint &other) -> Endpoint & = default;
+            auto operator=(Endpoint &&other) noexcept -> Endpoint & = default;
 
             [[nodiscard]] auto get_port() const -> std::uint16_t override { return port; }
             [[nodiscard]] auto get_addr() const -> const T & override { return addr; }

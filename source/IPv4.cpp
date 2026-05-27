@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 18:52:28 2022 Francois Michaut
-** Last update Wed Aug 20 12:58:26 2025 Francois Michaut
+** Last update Fri Jun 12 02:17:05 2026 Francois Michaut
 **
 ** IPv4.cpp : Implementation of IPv4 class
 */
@@ -23,7 +23,7 @@
 
 namespace CppSockets {
     IPv4::IPv4(std::uint32_t addr) :
-        addr(htonl(addr))
+        addr(htonl(addr)) // TODO: We are assuming input is always host - how do we allow network byte order as input ?
     {
         std::array<char, 17> buff = {0};
 
