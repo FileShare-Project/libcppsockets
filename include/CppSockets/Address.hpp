@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Wed Aug 20 12:57:17 2025 Francois Michaut
+** Last update Wed May 27 13:24:39 2026 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -49,7 +49,12 @@ namespace CppSockets {
             Endpoint(T addr, std::uint16_t port) :
                 addr(std::move(addr)), port(port), str(make_string())
             {};
-             ~Endpoint() override = default;
+            Endpoint(const Endpoint &other) = default;
+            Endpoint(Endpoint &&other) noexcept = default;
+            ~Endpoint() override = default;
+
+            auto operator=(const Endpoint &other) -> Endpoint & = default;
+            auto operator=(Endpoint &&other) noexcept -> Endpoint & = default;
 
             [[nodiscard]] auto get_port() const -> std::uint16_t override { return port; }
             [[nodiscard]] auto get_addr() const -> const T & override { return addr; }
