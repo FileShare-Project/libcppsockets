@@ -1,10 +1,10 @@
 /*
-** Project CppSockets, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Wed Aug 20 14:01:21 2025 Francois Michaut
+** Last update Wed Jul  1 14:20:12 2026 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */

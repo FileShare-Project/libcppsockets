@@ -1,10 +1,10 @@
 /*
-** Project CppSocket, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 18:52:28 2022 Francois Michaut
-** Last update Fri Jun 12 02:17:05 2026 Francois Michaut
+** Last update Wed Jul  1 14:19:56 2026 Francois Michaut
 **
 ** IPv4.cpp : Implementation of IPv4 class
 */

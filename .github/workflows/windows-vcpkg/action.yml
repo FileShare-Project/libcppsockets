@@ -17,7 +17,7 @@ runs:
     - name: Fetch VCPKG Cache (Windows)
       id: fetch-vcpkg-cache
       if: runner.os == 'Windows'
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         key: ${{ inputs.key }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         path: ${{ env.VCPKG_CACHE }}
@@ -31,7 +31,7 @@ runs:
 
     - name: Always Save VCPKG Cache (Windows)
       if: always() && runner.os == 'Windows' && steps.fetch-vcpkg-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         key: ${{ steps.fetch-vcpkg-cache.outputs.cache-primary-key }}
         path: ${{ env.VCPKG_CACHE }}

@@ -1,10 +1,10 @@
 /*
-** Project FileShare-Tests, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Fri Aug 22 21:11:25 2025 Francois Michaut
+** Last update Wed Jul  1 19:02:32 2026 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
@@ -13,12 +13,10 @@
 #include "CppSockets/Socket.hpp"
 
 #ifndef OS_WINDOWS
-
-#include <iostream>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
+  #include <iostream>
+  #include <sys/types.h>
+  #include <sys/wait.h>
+  #include <unistd.h>
 #endif
 
 using namespace CppSockets;
@@ -49,20 +47,21 @@ auto TestSockets(int /* ac */, char ** const /* av */) -> int
             return 1;
         }
         waitpid(child, &ret, 0);
-        return !(WIFEXITED(ret) && WEXITSTATUS(ret) == 0); // NOLINT(hicpp-signed-bitwise)
-    } else {
-        Socket soc(AF_INET, SOCK_STREAM, 0);
 
-        while (!soc.connected()) {
-            try {
-                soc.connect("127.0.0.1", port);
-            } catch (std::exception &e) {
-                std::cerr << "Got error: " << e.what() << std::endl;
-            }
-        }
-        std::cout << "Connected !" << std::endl;
-        soc.write(test);
-        return 0;
+        bool exited_normally = WIFEXITED(ret) && WEXITSTATUS(ret) == 0; // NOLINT(hicpp-signed-bitwise)
+        return !exited_normally;
     }
+    Socket soc(AF_INET, SOCK_STREAM, 0);
+
+    while (!soc.connected()) {
+        try {
+            soc.connect("127.0.0.1", port);
+        } catch (std::exception &e) {
+            std::cerr << "Got error: " << e.what() << std::endl;
+        }
+    }
+    std::cout << "Connected !" << std::endl;
+    soc.write(test);
+    return 0;
 #endif
 }

@@ -1,10 +1,10 @@
 /*
-** Project LibFileShareProtocol, 2025
+** Project LibCppSockets, 2025
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Aug  3 20:36:03 2025 Francois Michaut
-** Last update Wed Aug 20 14:12:29 2025 Francois Michaut
+** Last update Wed Jul  1 14:20:18 2026 Francois Michaut
 **
 ** SSL_Utils.cpp : SSL Utility implementations
 */

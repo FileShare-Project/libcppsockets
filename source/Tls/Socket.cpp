@@ -1,10 +1,10 @@
 /*
-** Project LibFileShareProtocol, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Fri Aug 22 21:57:23 2025 Francois Michaut
+** Last update Wed Jul  1 14:20:15 2026 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */

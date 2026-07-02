@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug  1 09:54:53 2025 Francois Michaut
-** Last update Wed Aug 20 16:49:57 2025 Francois Michaut
+** Last update Wed Jul  1 19:48:56 2026 Francois Michaut
 **
 ** Utils.hpp : Tls Utility types
 */
@@ -58,4 +58,5 @@ namespace CppSockets {
 
 // Don't leak macros
 #undef CPP_SOCKETS_TLS_UTILS_DEFINE_DTOR
+#undef CPP_SOCKETS_TLS_UTILS_DEFINE_PTR_CMD_PREFIX
 #undef CPP_SOCKETS_TLS_UTILS_DEFINE_PTR
