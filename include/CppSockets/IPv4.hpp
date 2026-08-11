@@ -1,10 +1,10 @@
 /*
-** Project CppSockets, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:05:02 2022 Francois Michaut
-** Last update Wed Aug 20 12:57:35 2025 Francois Michaut
+** Last update Wed Jul  1 14:19:39 2026 Francois Michaut
 **
 ** IPv4.hpp : Class used to represent and manipulate IPv4 addresses
 */

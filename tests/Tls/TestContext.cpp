@@ -1,10 +1,10 @@
 /*
-** Project FileShare-Tests, 2025
+** Project LibCppSockets, 2025
 **
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug 22 21:09:12 2025 Francois Michaut
-** Last update Fri Aug 22 21:36:06 2025 Francois Michaut
+** Last update Mon Aug 10 22:28:37 2026 Francois Michaut
 **
 ** TestContext.cpp : TlsContext tests
 */
@@ -12,7 +12,7 @@
 #include "CppSockets/Tls/Context.hpp"
 #include "CppSockets/Tls/Socket.hpp"
 
-void TestConfigCopyCtor() {
+static void TestConfigCopyCtor() {
     CppSockets::TlsContext ctx;
     CppSockets::TlsSocket soc;
 

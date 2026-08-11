@@ -1,10 +1,10 @@
 /*
-** Project CppSocket, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 22:03:32 2022 Francois Michaut
-** Last update Sat Jun 20 09:13:40 2026 Francois Michaut
+** Last update Wed Jul  1 14:19:53 2026 Francois Michaut
 **
 ** Address.cpp : Implementation of generic Address classes & functions
 */

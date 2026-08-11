@@ -1,10 +1,10 @@
 /*
-** Project CppSockets, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Sat Jun 20 09:12:58 2026 Francois Michaut
+** Last update Wed Jul  1 14:19:51 2026 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */

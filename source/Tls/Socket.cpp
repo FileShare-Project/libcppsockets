@@ -1,10 +1,10 @@
 /*
-** Project LibFileShareProtocol, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Fri Aug 22 21:57:23 2025 Francois Michaut
+** Last update Tue Aug 11 00:26:38 2026 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -104,16 +104,18 @@ namespace CppSockets {
     }
 
     void TlsSocket::close() {
-        int ret = SSL_shutdown(m_ssl.get());
+        if (m_ssl && this->connected()) {
+            int ret = SSL_shutdown(m_ssl.get());
 
-        if (ret == 1) {
-            return Socket::close();
+            if (ret == 1) {
+                return Socket::close();
+            }
+            // if (ret == 0) {
+            //     // TODO: wait for peer
+            // } else {
+            //     // TODO: Log failure
+            // }
         }
-        // if (ret == 0) {
-        //     // TODO: wait for peer
-        // } else {
-        //     // TODO: Log failure
-        // }
     }
 
     void TlsSocket::set_verify(int mode, SSL_verify_cb verify_callback) {

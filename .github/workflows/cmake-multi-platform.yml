@@ -49,7 +49,7 @@ jobs:
             c_compiler: gcc
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Set Env
         shell: bash
@@ -60,7 +60,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: ./.github/workflows/windows-vcpkg
         with:
-          key: ${{ runner.os }}-${{ matrix.build_type }}
+          key: vcpkg-cache-${{ runner.os }}
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory.
@@ -79,18 +79,49 @@ jobs:
         # because the default Windows generator is a multi-config generator (Visual Studio generator).
         run: cmake --build ${{ env.BUILD_OUTPUT_DIR }} --config ${{ matrix.build_type }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Compile Commands
+        uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Release' && matrix.c_compiler == 'clang'
         with:
           name: compile_commands.json
           path: ${{ env.BUILD_OUTPUT_DIR }}/compile_commands.json
+          archive: false
+
+      - name: Upload CppSockets lib
+        uses: actions/upload-artifact@v6
+        with:
+          name: libcppsockets-${{ runner.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
+          path: "${{ env.BUILD_OUTPUT_DIR }}/**/libcppsockets.*"
+
+      - name: Upload UnitTests
+        uses: actions/upload-artifact@v6
+        if: matrix.os != 'windows-latest'
+        with:
+          name: unit_tests-${{ runner.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
+          path: "${{ env.BUILD_OUTPUT_DIR }}/tests/**/unit_tests*"
+
+      - name: Upload UnitTests
+        uses: actions/upload-artifact@v6
+        if: matrix.os == 'windows-latest'
+        with:
+          name: unit_tests-${{ runner.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
+          path: |
+            ${{ env.BUILD_OUTPUT_DIR }}/tests/**/unit_tests*
+            ${{ env.BUILD_OUTPUT_DIR }}/tests/**/*.dll
+
+      - name: Setup DLL PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "$VCPKG_ROOT/installed/x64-windows/bin" >> "$GITHUB_PATH"
+          echo "$BUILD_OUTPUT_DIR/${{ matrix.build_type }}" >> "$GITHUB_PATH"
 
       - name: Test
         working-directory: ${{ env.BUILD_OUTPUT_DIR }}
         # Execute tests defined by the CMake configuration. Note that --build-config is needed
         # because the default Windows generator is a multi-config generator (Visual Studio generator).
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-        run: ctest --build-config ${{ matrix.build_type }} --test-dir tests --output-on-failure
+        run: ctest --timeout 60 --build-config ${{ matrix.build_type }} --test-dir tests --output-on-failure
 
   clang-tidy:
     needs: 'build'
@@ -99,9 +130,9 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: compile_commands.json
 

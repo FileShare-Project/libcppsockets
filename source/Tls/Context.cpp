@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug 20 14:40:41 2025 Francois Michaut
-** Last update Fri Aug 22 21:46:12 2025 Francois Michaut
+** Last update Tue Jun 30 08:38:15 2026 Francois Michaut
 **
 ** Context.cpp : Implementation of the Context for TLS sockets
 */
@@ -68,7 +68,8 @@ namespace CppSockets {
     }
 
     auto TlsContext::operator=(const TlsContext &other) -> TlsContext & {
-        UP_REF_ASSIGNMENT_OPERATOR(SSL_CTX)
+        UP_REF_ASSIGNMENT_OPERATOR(SSL_CTX);
+        m_verify_callback = other.m_verify_callback;
     }
 
     auto TlsContext::operator=(TlsContext &&other) noexcept -> TlsContext & {

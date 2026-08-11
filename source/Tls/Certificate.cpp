@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Aug  2 22:41:35 2025 Francois Michaut
-** Last update Wed Aug 20 17:05:49 2025 Francois Michaut
+** Last update Thu Jul  2 03:01:04 2026 Francois Michaut
 **
 ** Certificate.cpp : Implementation of classes to create and manage Certificates
 */
@@ -51,6 +51,12 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509_NAME")
     }
 
+    x509Name::x509Name(const X509_NAME *ptr) :
+        m_ptr(const_cast<X509_NAME *>(ptr)), m_own(false)
+    {
+        REQUIRED_PTR(m_ptr, "X509_NAME")
+    }
+
     MAKE_DESTRUCTOR(x509Name)
 
     auto x509Name::operator=(const x509Name &other) -> x509Name & {
@@ -86,9 +92,9 @@ namespace CppSockets {
     }
 
     auto x509Name::get_entry_by_index(int idx) const -> x509NameEntry {
-        X509_NAME_ENTRY *ptr{check_or_throw_openssl_error(X509_NAME_get_entry(m_ptr.get(), idx))};
+        const X509_NAME_ENTRY *ptr{check_or_throw_openssl_error(X509_NAME_get_entry(m_ptr.get(), idx))};
 
-        return {ptr, false};
+        return {ptr};
     }
 
     auto x509Name::get_entry(int nid, int lastpos) const -> x509NameEntry {
@@ -134,6 +140,12 @@ namespace CppSockets {
 
     x509NameEntry::x509NameEntry(X509_NAME_ENTRY *ptr, bool own) :
         m_ptr(ptr), m_own(own)
+    {
+        REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
+    }
+
+    x509NameEntry::x509NameEntry(const X509_NAME_ENTRY *ptr) :
+        m_ptr(const_cast<X509_NAME_ENTRY *>(ptr)), m_own(false)
     {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
@@ -203,6 +215,12 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509_EXTENSION")
     }
 
+    x509Extension::x509Extension(const X509_EXTENSION *ptr) :
+        m_ptr(const_cast<X509_EXTENSION *>(ptr)), m_own(false)
+    {
+        REQUIRED_PTR(m_ptr, "X509_EXTENSION")
+    }
+
     x509Extension::x509Extension(int nid, int crit, ASN1_OCTET_STRING *data) :
         m_ptr(X509_EXTENSION_create_by_NID(nullptr, nid, crit, data))
     {
@@ -233,11 +251,11 @@ namespace CppSockets {
         check_or_throw_openssl_error(X509_EXTENSION_set_critical(m_ptr.get(), crit));
     }
 
-    auto x509Extension::get_data() const -> ASN1_OCTET_STRING * {
+    auto x509Extension::get_data() const -> const ASN1_OCTET_STRING * {
         return X509_EXTENSION_get_data(m_ptr.get());
     }
 
-    auto x509Extension::get_object() const -> ASN1_OBJECT * {
+    auto x509Extension::get_object() const -> const ASN1_OBJECT * {
         return X509_EXTENSION_get_object(m_ptr.get());
     }
 
@@ -266,6 +284,12 @@ namespace CppSockets {
         REQUIRED_PTR(m_ptr, "X509")
     }
 
+    x509Certificate::x509Certificate(const X509 *ptr) :
+        m_ptr(const_cast<X509 *>(ptr)), m_own(false)
+    {
+        REQUIRED_PTR(m_ptr, "X509")
+    }
+
     MAKE_DESTRUCTOR(x509Certificate)
 
     x509Certificate::x509Certificate(const std::filesystem::path &pem_file_path) {
@@ -288,6 +312,7 @@ namespace CppSockets {
             throw std::runtime_error("Failed to load X509 Certificate");
         }
         m_ptr.reset(x509);
+        m_own = true;
     }
 
     void x509Certificate::save(const std::filesystem::path &pem_file_path) const {
@@ -318,11 +343,15 @@ namespace CppSockets {
     }
 
     auto x509Certificate::get_issuer_name() const -> x509Name {
-        return {X509_get_issuer_name(m_ptr.get()), false};
+        const X509_NAME *ptr = X509_get_issuer_name(m_ptr.get());
+
+        return {ptr};
     }
 
     auto x509Certificate::get_subject_name() const -> x509Name {
-        return {X509_get_subject_name(m_ptr.get()), false};
+        const X509_NAME *ptr = X509_get_subject_name(m_ptr.get());
+
+        return {ptr};
     }
 
     void x509Certificate::set_not_before(int offset_day, std::int64_t offset_sec, time_t *in_tm) {
@@ -410,12 +439,12 @@ namespace CppSockets {
     }
 
     auto x509Certificate::get_extension(std::uint32_t loc) const -> x509Extension {
-        X509_EXTENSION *ptr {X509_get_ext(m_ptr.get(), numeric_cast<int>(loc))};
+        const X509_EXTENSION *ptr {X509_get_ext(m_ptr.get(), numeric_cast<int>(loc))};
 
         if (!ptr) {
             throw std::runtime_error("Failed to get extension");
         }
-        return {ptr, false};
+        return {ptr};
     }
 
     auto x509Certificate::get_extension_by(int nid, int lastpos) const -> x509Extension {

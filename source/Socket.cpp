@@ -1,10 +1,10 @@
 /*
-** Project CppSocket, 2022
+** Project LibCppSockets, 2022
 **
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Wed Aug 20 12:59:14 2025 Francois Michaut
+** Last update Mon Aug 10 22:11:59 2026 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -62,8 +62,9 @@ namespace CppSockets {
     Socket::Socket(int domain, int type, int protocol) :
         m_domain(domain), m_type(type), m_protocol(protocol), m_sockfd(::socket(domain, type, protocol))
     {
-        if (m_sockfd == INVALID_SOCKET)
+        if (m_sockfd == INVALID_SOCKET) {
             throw std::runtime_error(std::string("Failed to create socket : ") + std::strerror(errno));
+        }
     }
 
     Socket::~Socket() {
@@ -217,9 +218,13 @@ namespace CppSockets {
         addr.sin_family = endpoint.get_addr().get_family();
         // TODO: If connected close / reconnect
         ret = ::connect(m_sockfd, reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
-        if (ret < 0)
+        if (ret < 0) {
+            this->close();
+            m_sockfd = ::socket(m_domain, m_type, m_protocol);
             throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.to_string() + " : " + Socket::strerror());
-        m_is_connected = ret == 0;
+        } else {
+            m_is_connected = true;
+        }
         return ret;
     }
 

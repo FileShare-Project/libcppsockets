@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug  1 09:50:33 2025 Francois Michaut
-** Last update Wed Aug 20 17:17:44 2025 Francois Michaut
+** Last update Thu Jul  2 01:03:49 2026 Francois Michaut
 **
 ** Certificate.hpp : Classes to create and manage Certificates
 */
@@ -27,6 +27,7 @@ namespace CppSockets {
             x509Name();
             x509Name(X509_NAME_ptr ptr);
             x509Name(X509_NAME *ptr, bool own = true);
+            x509Name(const X509_NAME *ptr);
 
             x509Name(const x509Name &other) { *this = other; }
             x509Name(x509Name &&other) noexcept = default;
@@ -73,6 +74,7 @@ namespace CppSockets {
             x509NameEntry();
             x509NameEntry(X509_NAME_ENTRY_ptr ptr);
             x509NameEntry(X509_NAME_ENTRY *ptr, bool own = true);
+            x509NameEntry(const X509_NAME_ENTRY *ptr);
             x509NameEntry(const std::string &name, int type, const std::u8string &data);
             x509NameEntry(const ASN1_OBJECT *obj, int type, const std::u8string &data);
             x509NameEntry(int nid, int type, const std::u8string &data);
@@ -103,6 +105,7 @@ namespace CppSockets {
             x509Extension();
             x509Extension(X509_EXTENSION_ptr ptr);
             x509Extension(X509_EXTENSION *ptr, bool own = true);
+            x509Extension(const X509_EXTENSION *ptr);
             x509Extension(int nid, int crit, ASN1_OCTET_STRING *data);
             x509Extension(const ASN1_OBJECT *obj, int crit, ASN1_OCTET_STRING *data);
 
@@ -119,8 +122,8 @@ namespace CppSockets {
             void set_object(const ASN1_OBJECT *obj);
             void set_critical(bool crit);
 
-            [[nodiscard]] auto get_data() const -> ASN1_OCTET_STRING *;
-            [[nodiscard]] auto get_object() const -> ASN1_OBJECT *;
+            [[nodiscard]] auto get_data() const -> const ASN1_OCTET_STRING *;
+            [[nodiscard]] auto get_object() const -> const ASN1_OBJECT *;
             [[nodiscard]] auto get_critical() const -> bool;
 
             [[nodiscard]] auto get() const -> X509_EXTENSION * { return m_ptr.get(); }
@@ -134,6 +137,7 @@ namespace CppSockets {
             x509Certificate();
             x509Certificate(X509_ptr ptr);
             x509Certificate(X509 *ptr, bool own = true);
+            x509Certificate(const X509 *ptr);
             explicit x509Certificate(const std::filesystem::path &pem_file_path);
 
             x509Certificate(const x509Certificate &other) { *this = other; }
