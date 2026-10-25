@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Oct 24 23:24:43 2026 Francois Michaut
-** Last update Sun Oct 25 12:15:48 2026 Francois Michaut
+** Last update Mon Oct 26 11:46:20 2026 Francois Michaut
 **
 ** Callbacks.cpp : Centralization of the boilerplate for verify callbacks
 */
@@ -47,28 +47,30 @@ namespace CppSockets {
     void TlsContext::set_verify(int mode, TlsVerifyCallback callback) {
         void *previous = SSL_CTX_get_ex_data(m_ptr.get(), TLS_CONTEXT_CALLBACK_STRUCT_IDX);
 
-        delete static_cast<TlsCallbackData *>(previous);
         if (callback) {
             auto *cb_data = new TlsCallbackData{std::move(callback)};
 
             SSL_CTX_set_ex_data(m_ptr.get(), TLS_CONTEXT_CALLBACK_STRUCT_IDX, cb_data);
             SSL_CTX_set_verify(m_ptr.get(), mode, tls_context_verify_callback);
         } else {
+            SSL_CTX_set_ex_data(m_ptr.get(), TLS_CONTEXT_CALLBACK_STRUCT_IDX, nullptr);
             SSL_CTX_set_verify(m_ptr.get(), mode, nullptr);
         }
+        delete static_cast<TlsCallbackData *>(previous);
     }
 
     void TlsSocket::set_verify(int mode, TlsVerifyCallback callback) {
         void *previous = SSL_get_ex_data(m_ssl.get(), TLS_SOCKET_CALLBACK_STRUCT_IDX);
 
-        delete static_cast<TlsCallbackData *>(previous);
         if (callback) {
             auto *cb_data = new TlsCallbackData{std::move(callback)};
 
             SSL_set_ex_data(m_ssl.get(), TLS_SOCKET_CALLBACK_STRUCT_IDX, cb_data);
             SSL_set_verify(m_ssl.get(), mode, ssl_verify_callback);
         } else {
+            SSL_set_ex_data(m_ssl.get(), TLS_SOCKET_CALLBACK_STRUCT_IDX, nullptr);
             SSL_set_verify(m_ssl.get(), mode, nullptr);
         }
+        delete static_cast<TlsCallbackData *>(previous);
     }
 }

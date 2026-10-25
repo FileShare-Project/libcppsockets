@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Wed Jul  1 14:20:05 2026 Francois Michaut
+** Last update Sun Oct 25 23:15:50 2026 Francois Michaut
 **
 ** SocketInit.hpp : Socket class automatic initialization and teardown
 */

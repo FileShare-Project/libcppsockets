@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Aug  2 22:41:35 2025 Francois Michaut
-** Last update Thu Jul  2 03:01:04 2026 Francois Michaut
+** Last update Sun Oct 25 23:12:25 2026 Francois Michaut
 **
 ** Certificate.cpp : Implementation of classes to create and manage Certificates
 */
@@ -18,16 +18,15 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 #include <stdexcept>
+#include <utility>
 
 namespace {
     template<typename Dst, typename Src>
     inline auto numeric_cast(const Src value) -> Dst {
-        const Dst result = static_cast<Dst>(value);
-
-        if (result != value) {
+        if (!std::in_range<Dst>(value)) {
             throw std::overflow_error("Overflow/Underflow error");
         }
-        return result;
+        return static_cast<Dst>(value);
     }
 }
 
@@ -52,7 +51,7 @@ namespace CppSockets {
     }
 
     x509Name::x509Name(const X509_NAME *ptr) :
-        m_ptr(const_cast<X509_NAME *>(ptr)), m_own(false)
+        m_ptr(X509_NAME_dup(const_cast<X509_NAME *>(ptr)))
     {
         REQUIRED_PTR(m_ptr, "X509_NAME")
     }
@@ -145,7 +144,7 @@ namespace CppSockets {
     }
 
     x509NameEntry::x509NameEntry(const X509_NAME_ENTRY *ptr) :
-        m_ptr(const_cast<X509_NAME_ENTRY *>(ptr)), m_own(false)
+        m_ptr(X509_NAME_ENTRY_dup(const_cast<X509_NAME_ENTRY *>(ptr)))
     {
         REQUIRED_PTR(m_ptr, "X509_NAME_ENTRY")
     }
@@ -216,7 +215,7 @@ namespace CppSockets {
     }
 
     x509Extension::x509Extension(const X509_EXTENSION *ptr) :
-        m_ptr(const_cast<X509_EXTENSION *>(ptr)), m_own(false)
+        m_ptr(X509_EXTENSION_dup(const_cast<X509_EXTENSION *>(ptr)))
     {
         REQUIRED_PTR(m_ptr, "X509_EXTENSION")
     }
@@ -285,7 +284,7 @@ namespace CppSockets {
     }
 
     x509Certificate::x509Certificate(const X509 *ptr) :
-        m_ptr(const_cast<X509 *>(ptr)), m_own(false)
+        m_ptr(X509_dup(const_cast<X509 *>(ptr)))
     {
         REQUIRED_PTR(m_ptr, "X509")
     }
@@ -357,7 +356,7 @@ namespace CppSockets {
     void x509Certificate::set_not_before(int offset_day, std::int64_t offset_sec, time_t *in_tm) {
         ASN1_TIME *not_before = X509_getm_notBefore(m_ptr.get());
 
-        if (!X509_time_adj_ex(not_before, offset_day, offset_sec, in_tm)) {
+        if (!X509_time_adj_ex(not_before, offset_day, numeric_cast<long>(offset_sec), in_tm)) {
             throw std::runtime_error("Failed to adjust not_before time");
         }
     }
@@ -365,13 +364,13 @@ namespace CppSockets {
     void x509Certificate::set_not_after(int offset_day, std::int64_t offset_sec, time_t *in_tm) {
         ASN1_TIME *not_after = X509_getm_notAfter(m_ptr.get());
 
-        if (!X509_time_adj_ex(not_after, offset_day, offset_sec, in_tm)) {
+        if (!X509_time_adj_ex(not_after, offset_day, numeric_cast<long>(offset_sec), in_tm)) {
             throw std::runtime_error("Failed to adjust not_after time");
         }
     }
 
     void x509Certificate::set_version(std::int64_t version) {
-        if (!X509_set_version(m_ptr.get(), version)) {
+        if (!X509_set_version(m_ptr.get(), numeric_cast<long>(version))) {
             throw std::runtime_error("Failed to set version");
         }
     }

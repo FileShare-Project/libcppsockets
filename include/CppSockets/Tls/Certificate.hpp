@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug  1 09:50:33 2025 Francois Michaut
-** Last update Thu Jul  2 01:03:49 2026 Francois Michaut
+** Last update Sun Oct 25 23:16:01 2026 Francois Michaut
 **
 ** Certificate.hpp : Classes to create and manage Certificates
 */

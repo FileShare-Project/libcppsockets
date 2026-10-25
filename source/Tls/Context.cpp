@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Aug 20 14:40:41 2025 Francois Michaut
-** Last update Sun Oct 25 00:18:04 2026 Francois Michaut
+** Last update Mon Oct 26 15:28:35 2026 Francois Michaut
 **
 ** Context.cpp : Implementation of the Context for TLS sockets
 */
@@ -28,6 +28,13 @@ namespace CppSockets {
         m_ptr(SSL_CTX_new(TLS_method()))
     {
         TLS_CONTEXT_CONSTRUCTOR_BODY;
+
+        // TlsContext safe by default. Enable verify and uses system trust store.
+        // Also set decent security defaults, can be overriden by the library user.
+        SSL_CTX_set_verify(m_ptr.get(), SSL_VERIFY_PEER, nullptr);
+        SSL_CTX_set_default_verify_paths(m_ptr.get());
+        SSL_CTX_set_dh_auto(m_ptr.get(), 1);
+        SSL_CTX_set_cipher_list(m_ptr.get(), "HIGH:!aNULL:!eNULL:!MD5:!RC4:!3DES");
     }
 
     TlsContext::TlsContext(SSL_CTX_ptr ptr) :
@@ -66,6 +73,18 @@ namespace CppSockets {
     void TlsContext::set_min_proto_version(int version) {
         if (!SSL_CTX_set_min_proto_version(m_ptr.get(), version)) {
             throw std::runtime_error("Failed to set TlsProtocol Version");
+        }
+    }
+
+    void TlsContext::set_cipher_list(const char *cipher_list) {
+        if (!SSL_CTX_set_cipher_list(m_ptr.get(), cipher_list)) {
+            throw std::runtime_error("Failed to set cipher list");
+        }
+    }
+
+    void TlsContext::set_ciphersuites(const char *ciphersuites) {
+        if (!SSL_CTX_set_ciphersuites(m_ptr.get(), ciphersuites)) {
+            throw std::runtime_error("Failed to set TLS 1.3 ciphersuites");
         }
     }
 

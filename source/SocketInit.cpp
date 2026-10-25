@@ -4,11 +4,12 @@
 ** Author Francois Michaut
 **
 ** Started on  Thu Sep 15 14:24:25 2022 Francois Michaut
-** Last update Thu Oct 22 22:06:42 2026 Francois Michaut
+** Last update Mon Oct 26 22:48:19 2026 Francois Michaut
 **
 ** init.cpp : Startup/Cleanup functions implementation
 */
 
+#include "CppSockets/ErrorUtils.hpp"
 #include "CppSockets/OSDetection.hpp"
 #include "CppSockets/internal/SocketInit.hpp"
 
@@ -19,7 +20,6 @@
 #include <string>
 
 #ifdef OS_WINDOWS
-  #include <cstring>
   #include <iostream>
 
   #include <winsock2.h>
@@ -34,9 +34,9 @@ namespace CppSockets {
         WSADATA wsa_data;
 
         // TODO check value in wsa_data
-        if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-            // TODO: use WSAGetLastError
-            init_error = std::string("WASStartup Failed : ") + std::strerror(errno);
+        const int wsa_error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+        if (wsa_error != 0) {
+            init_error = std::string("WSAStartup Failed : ") + CppSockets::strerror(wsa_error);
             std::cerr << init_error << '\n';
             return false;
         }
@@ -53,8 +53,7 @@ namespace CppSockets {
     static void deinit() {
 #ifdef OS_WINDOWS
         if (WSACleanup() == SOCKET_ERROR) {
-            // TODO use FormatMessage to get the error string
-            std::cerr << std::string("WSACleanup Failed : ") << std::to_string(WSAGetLastError()) << '\n';
+            std::cerr << std::string("WSACleanup Failed : ") << CppSockets::strerror() << '\n';
         }
 #else
         // TODO check return values / raise errors

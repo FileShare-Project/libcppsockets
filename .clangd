@@ -1,0 +1,5 @@
+Diagnostics:
+  Includes:
+    IgnoreHeader:
+      - "CppSockets/OSDetection\\.hpp"
+      - "CppSockets/SocketInternals\\.hpp"

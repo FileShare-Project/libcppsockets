@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Tue May  9 23:20:20 2023 Francois Michaut
-** Last update Wed Jul  1 14:20:01 2026 Francois Michaut
+** Last update Sun Oct 25 23:15:10 2026 Francois Michaut
 **
 ** OSDetection.hpp : OS Detection macros
 */

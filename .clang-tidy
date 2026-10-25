@@ -6,6 +6,7 @@ Checks: '
 -fuchsia*,
 -google-readability-todo,
 -cppcoreguidelines-init-variables,
+-cppcoreguidelines-avoid-do-while,
 -cppcoreguidelines-owning-memory,
 -cppcoreguidelines-pro-type-reinterpret-cast,
 -llvm-namespace-comment,
@@ -15,6 +16,7 @@ Checks: '
 -readability-avoid-return-with-void-value,
 -readability-convert-member-functions-to-static,
 
+-misc-use-anonymous-namespace,
 -google-readability-braces-around-statements,
 -google-readability-namespace-comments,
 -hicpp-special-member-functions,
@@ -27,7 +29,7 @@ FormatStyle: 'none' # TODO: Replace with 'file' once we have a proper .clang-for
 InheritParentConfig: true
 CheckOptions:
   misc-include-cleaner.MissingIncludes: 'false'
-  misc-include-cleaner.IgnoreHeaders: 'CppSockets/OSDetection.*'
+  misc-include-cleaner.IgnoreHeaders: 'CppSockets/OSDetection\.hpp;CppSockets/SocketInternals\.hpp'
 
   bugprone-argument-comment.StrictMode: 1
 
