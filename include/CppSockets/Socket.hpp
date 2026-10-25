@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Wed Jul  1 14:20:12 2026 Francois Michaut
+** Last update Sun Oct 25 11:38:13 2026 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
@@ -37,7 +37,7 @@ namespace CppSockets {
             Socket();
             Socket(int domain, int type, int protocol);
             Socket(RawSocketType fd, bool connected);
-            ~Socket();
+            virtual ~Socket();
 
             // TODO Maybe enable copy with dup(2) ?
             Socket(const Socket &other) = delete;
@@ -45,18 +45,19 @@ namespace CppSockets {
             auto operator=(const Socket &other) -> Socket & = delete;
             auto operator=(Socket &&other) noexcept -> Socket &;
 
-            auto read(std::size_t len = -1) -> std::string;
-            auto read(char *buff, std::size_t size) -> std::size_t;
-            auto write(const std::string &buff) -> std::size_t;
-            auto write(const char *buff, std::size_t len) -> std::size_t;
+            virtual void close();
+
+            virtual auto read(std::size_t len = -1) -> std::string;
+            virtual auto read(char *buff, std::size_t size) -> std::size_t;
+            virtual auto write(std::string_view buff) -> std::size_t;
+            virtual auto write(const char *buff, std::size_t len) -> std::size_t;
 
             auto set_reuseaddr(bool value) -> int;
             auto getsockopt(int level, int optname, SockOptType *optval, socklen_t *optlen) -> int;
             auto setsockopt(int level, int optname, const SockOptType *optval, socklen_t optlen) -> int;
 
-            void close();
-            auto connect(const IEndpoint &endpoint) -> int;
-            auto connect(const std::string &addr, uint16_t port) -> int;
+            virtual auto connect(const IEndpoint &endpoint) -> int;
+            virtual auto connect(const std::string &addr, uint16_t port) -> int;
 
             auto bind(const IEndpoint &endpoint) -> int;
             auto bind(const std::string &addr, uint16_t port) -> int;
@@ -74,15 +75,23 @@ namespace CppSockets {
             [[nodiscard]] auto connected() const -> bool { return m_is_connected; }
 
             static auto get_errno() -> int;
-            static auto strerror(int err) -> char *;
-            static auto strerror() -> char *;
+            static auto strerror(int err) -> std::string;
+            static auto strerror() -> std::string;
 
         protected:
+            static void throw_errno_error(std::string message);
+            static void throw_errno_error(std::string message, int err);
+
             static auto getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) -> int;
+            static auto getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t optlen) -> int { return Socket::getsockopt(fd, level, optname, optval, &optlen); }
+
             auto bind(std::uint32_t addr, uint16_t port) -> int;
 
             void set_connected(bool status) { m_is_connected = status; };
 
+            void create_socket();
+
+            virtual auto acceptImpl(void *addr_out) -> Socket *;
         private:
             int m_domain = 0;
             int m_type = 0;
