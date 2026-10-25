@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: write
 
     strategy:
       # ensure we don't stop after 1 failure to always have a complete picture of what is failing
@@ -127,6 +130,9 @@ jobs:
     needs: 'build'
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout Code

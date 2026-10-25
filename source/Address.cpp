@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 22:03:32 2022 Francois Michaut
-** Last update Wed Jul  1 14:19:53 2026 Francois Michaut
+** Last update Sun Oct 25 12:47:04 2026 Francois Michaut
 **
 ** Address.cpp : Implementation of generic Address classes & functions
 */
@@ -28,6 +28,11 @@ namespace CppSockets {
     auto IEndpoint::from_string(std::string endpoint) -> std::shared_ptr<CppSockets::IEndpoint> {
         // TODO: Support IPv6
         std::size_t colon_pos = endpoint.find_last_of(':');
+
+        if (colon_pos == std::string::npos) {
+            throw std::runtime_error("Invalid Endpoint");
+        }
+
         std::stringstream ss{std::move(endpoint)};
         std::string ip_part(colon_pos, '\0'); // 0-init str with enough size
         std::uint16_t port = 0;
@@ -40,6 +45,8 @@ namespace CppSockets {
         if (ss) {
             ss >> port;
         }
+
+        // TODO: Error handling
 
         return std::make_shared<EndpointV4>(ipv4, port);
     }

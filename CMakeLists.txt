@@ -4,7 +4,7 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Thu Jul  2 01:56:37 2026 Francois Michaut
+## Last update Sat Oct 24 23:32:08 2026 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
@@ -21,6 +21,7 @@ project(LibCppSockets VERSION 0.1.0 LANGUAGES C CXX)
 configure_file(include/CppSockets/Version.hpp.in include/CppSockets/Version.hpp)
 
 add_library(cppsockets
+  source/Tls/Callbacks.cpp
   source/Tls/Certificate.cpp
   source/Tls/Context.cpp
   source/Tls/Utils.cpp
@@ -40,7 +41,14 @@ target_include_directories(cppsockets
     ${PROJECT_SOURCE_DIR}/private
 )
 
-target_compile_definitions(cppsockets PRIVATE CPPSOCKETS_DLL_EXPORTS=1)
+if(WIN32)
+  target_compile_definitions(cppsockets PRIVATE CPPSOCKETS_DLL_EXPORTS=1)
+endif()
+
+target_compile_options(cppsockets PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
 
 find_package(OpenSSL 3.0 COMPONENTS SSL)
 target_link_libraries(cppsockets OpenSSL::SSL)

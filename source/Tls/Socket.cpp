@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Wed Sep 14 21:04:42 2022 Francois Michaut
-** Last update Tue Aug 11 00:26:38 2026 Francois Michaut
+** Last update Sun Oct 25 12:30:49 2026 Francois Michaut
 **
 ** SecureSocket.cpp : TLS socket wrapper implementation
 */
@@ -18,12 +18,13 @@
 #include <openssl/ssl.h>
 
 #include <array>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
 static constexpr int BUFF_SIZE = 4096;
 
-namespace  {
+namespace {
     auto extract_errors_from_queue() -> std::string {
         auto error = ERR_get_error();
         std::stringstream ss;
@@ -39,10 +40,13 @@ namespace  {
     }
 
     void init_ssl_socket(SSL *ssl, CppSockets::TlsSocket *socket) {
-        if (!ssl || !SSL_set_fd(ssl, socket->get_fd())) {
+        if (!ssl) {
+            throw std::runtime_error("Failed to initialize TLS socket: " + extract_errors_from_queue());
+        }
+        if (!SSL_set_fd(ssl, socket->get_fd())) {
             throw std::runtime_error(std::string("Failed to initialize TLS socket: ") + socket->tls_strerror(0));
         }
-        if (!SSL_set_min_proto_version(ssl, TLS1_VERSION)) {
+        if (!SSL_set_min_proto_version(ssl, TLS1_2_VERSION)) {
             throw std::runtime_error(std::string("Failed to select TLS version: ") + socket->tls_strerror(0));
         }
     }
@@ -58,6 +62,12 @@ namespace CppSockets {
     {
         init_ssl_socket(m_ssl.get(), this);
     }
+
+    TlsSocket::TlsSocket(TlsSocket &&other) noexcept :
+        Socket(std::move(other)), m_ctx(std::move(other.m_ctx)),
+        m_ssl(std::move(other.m_ssl)), m_peer_cert(std::move(other.m_peer_cert)),
+        m_should_shutdown(other.m_should_shutdown)
+    {}
 
     TlsSocket::TlsSocket(Socket &&other, TlsContext ctx) :
         CppSockets::Socket(std::move(other)), // TODO: if socket is not connected, at that moment, does it break ?
@@ -76,22 +86,11 @@ namespace CppSockets {
     }
 
     TlsSocket::~TlsSocket() noexcept {
-        if (m_ssl && this->connected()) {
-            // TODO: Better shutdown mecanics
-            int ret = SSL_shutdown(m_ssl.get());
-
-            // if (ret == 1) {
-            //     // Peer also closed -> We can leave.
-            // } else if (ret == 0) {
-            //     // Peer didn't send, but we can't wait in the Destructor
-            // } else {
-            //     // TODO: log failure
-            // }
+        try {
+            this->close(true);
+        } catch (const std::runtime_error& e) {
+            std::cerr << "Failed to close TlsSocket: " << e.what() << '\n';
         }
-    }
-
-    TlsSocket::TlsSocket(TlsSocket &&other) noexcept {
-        *this = std::move(other);
     }
 
     auto TlsSocket::operator=(TlsSocket &&other) noexcept -> TlsSocket & {
@@ -99,29 +98,32 @@ namespace CppSockets {
         m_ctx = std::move(other.m_ctx);
         m_peer_cert = std::move(other.m_peer_cert);
 
+        std::swap(m_should_shutdown, other.m_should_shutdown);
+
         Socket::operator=(std::move(other));
         return *this;
     }
 
-    void TlsSocket::close() {
-        if (m_ssl && this->connected()) {
+    bool TlsSocket::close(bool force) {
+        if (m_ssl && m_should_shutdown) {
             int ret = SSL_shutdown(m_ssl.get());
 
-            if (ret == 1) {
-                return Socket::close();
+            if (ret < 0) {
+                throw_tls_error("Failed to shutdown TLS: ", ret);
+            } else if (ret == 1 || force) {
+                Socket::close();
+            } else { // ret == 0
+                // TODO: wait for peer
+                return false;
             }
-            // if (ret == 0) {
-            //     // TODO: wait for peer
-            // } else {
-            //     // TODO: Log failure
-            // }
+        } else if (this->connected()) {
+            Socket::close();
         }
+        return true;
     }
 
-    void TlsSocket::set_verify(int mode, SSL_verify_cb verify_callback) {
-        // TODO: While setting it on the CTX makes sense imo (since accepted sockets will inherit this), an application
-        // might not want that behavior. Need to provide alertnate ways to set verify on CTX vs SSL
-        SSL_CTX_set_verify(m_ctx.get(), mode, verify_callback);
+    void TlsSocket::set_verify_depth(int depth) {
+        SSL_set_verify_depth(m_ssl.get(), depth);
     }
 
     void TlsSocket::set_certificate(const std::string &cert_path, const std::string &pkey_path) {
@@ -132,34 +134,38 @@ namespace CppSockets {
         EVP_PKEY_ptr evp_pkey(PEM_read_bio_PrivateKey(pkey.get(), nullptr, nullptr, nullptr));
 
         if (SSL_use_certificate(m_ssl.get(), x509.get()) <= 0) {
-            throw std::runtime_error(std::string("Failed to set certificate: ") + TlsSocket::tls_strerror(0));
+            throw_tls_error("Failed to set certificate: ");
         }
 
         if (SSL_use_PrivateKey(m_ssl.get(), evp_pkey.get()) <= 0 ) {
-            throw std::runtime_error(std::string("Failed to set private key: ") + TlsSocket::tls_strerror(0));
+            throw_tls_error("Failed to set private key: ");
         }
     }
 
     // TODO add SSL_get_shutdown checks in read operations
     auto TlsSocket::read(std::size_t len) -> std::string {
-        std::array<char, BUFF_SIZE> buff = {0};
-        std::stringstream res;
-        std::size_t nb = 0;
+        std::array<char, BUFF_SIZE> buff;
+        std::size_t buff_size = buff.size();
+        std::string res;
+        std::size_t nb = 1;
         std::size_t total;
 
+        if (len != -1) res.reserve(len);
+
         if (SSL_peek(m_ssl.get(), buff.data(), buff.size()) <= 0) {
-            set_connected(false); // TODO: we should replace this with check_for_error
+            m_should_shutdown = false; // TODO: we should replace this with check_for_error
         }
         check_for_error("Failed to read from socket", 1); // Do not raise an error if peek failed
         total = SSL_pending(m_ssl.get());
-        while (total != 0 && len != 0) {
-            nb = this->read(buff.data(), (buff.size() > len ? len : buff.size()));
-            res << std::string(buff.data(), nb);
+        while (nb != 0 && total != 0 && len != 0) {
+            nb = this->read(buff.data(), (buff_size > len ? len : buff_size));
+            res.append(buff.data(), nb);
             total -= nb;
-            if (len != -1)
+            if (len != -1) {
                 len -= nb;
+            }
         }
-        return res.str();
+        return res;
     }
 
     auto TlsSocket::read(char *buff, std::size_t size) -> std::size_t {
@@ -178,16 +184,16 @@ namespace CppSockets {
         return nb;
     }
 
-    void TlsSocket::check_for_error(const std::string &error_msg, int ret) {
+    void TlsSocket::check_for_error(std::string error_msg, int ret) {
         int shutdown = SSL_get_shutdown(m_ssl.get());
 
         if (shutdown == SSL_RECEIVED_SHUTDOWN) {
             SSL_shutdown(m_ssl.get()); // TODO: log failure
-            set_connected(false);
+            m_should_shutdown = false;
         }
 
         if (ret <= 0) {
-            throw std::runtime_error(error_msg + TlsSocket::tls_strerror(ret));
+            throw_tls_error(std::move(error_msg), ret);
         }
     }
 
@@ -196,14 +202,19 @@ namespace CppSockets {
         int ssl_ret = SSL_connect(m_ssl.get());
 
         if (ssl_ret != 1) {
-            throw std::runtime_error(std::string("Failed to connect: ") + TlsSocket::tls_strerror(ssl_ret));
+            throw_tls_error("Failed to connect: ", ssl_ret);
         }
+        m_should_shutdown = true;
         m_peer_cert.reset(SSL_get_peer_certificate(m_ssl.get()));
         return ret;
     }
 
     auto TlsSocket::accept(void *addr_out, TlsContext ctx) -> std::unique_ptr<TlsSocket> {
-        std::unique_ptr<Socket> res = Socket::accept(addr_out);
+        return std::unique_ptr<TlsSocket>(this->acceptImpl(addr_out, ctx));
+    }
+
+    auto TlsSocket::acceptImpl(void *addr_out, TlsContext ctx) -> TlsSocket * {
+        std::unique_ptr<Socket> res{Socket::acceptImpl(addr_out)};
         std::unique_ptr<TlsSocket> tls;
         int ssl_ret = 0;
 
@@ -214,10 +225,11 @@ namespace CppSockets {
         tls = std::make_unique<TlsSocket>(std::move(*res), std::move(ctx));
         ssl_ret = SSL_accept(tls->get_ssl().get());
         if (ssl_ret <= 0) {
-            throw std::runtime_error("Failed to accept TLS connection: " + TlsSocket::tls_strerror(ssl_ret));
+            throw_tls_error("Failed to accept TLS connection: ", ssl_ret);
         }
+        tls->m_should_shutdown = true;
         tls->m_peer_cert.reset(SSL_get_peer_certificate(tls->get_ssl().get()));
-        return tls;
+        return tls.release();
     }
 
     auto TlsSocket::get_ssl_ctx() const -> TlsContext {
@@ -225,6 +237,8 @@ namespace CppSockets {
     }
 
     auto TlsSocket::tls_strerror(int ret) -> std::string {
+        if (!m_ssl) return "SSL object is null";
+
         int err = SSL_get_error(m_ssl.get(), ret);
 
         switch (err) {
@@ -249,13 +263,21 @@ namespace CppSockets {
             case SSL_ERROR_WANT_CLIENT_HELLO_CB:
                 return "Retry the operation later: WANT_CLIENT_HELLO_CB";
             case SSL_ERROR_SYSCALL:
-                set_connected(false);
+                m_should_shutdown = false;
                 return std::string("Fatal system error: ") + Socket::strerror() + '\n' + extract_errors_from_queue();
             case SSL_ERROR_SSL:
-                set_connected(false);
+                m_should_shutdown = false;
                 return  "Fatal TLS error: " + extract_errors_from_queue();
             default:
                 return "Unknown error: " + std::to_string(err) + '\n' + extract_errors_from_queue();
         }
+    }
+
+    void TlsSocket::throw_tls_error(std::string message) {
+        throw_tls_error(std::move(message), 0);
+    }
+
+    void TlsSocket::throw_tls_error(std::string message, int ret) {
+        throw std::runtime_error(std::move(message) + tls_strerror(ret));
     }
 }

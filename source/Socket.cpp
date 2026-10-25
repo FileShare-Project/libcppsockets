@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:27:40 2022 Francois Michaut
-** Last update Mon Aug 10 22:11:59 2026 Francois Michaut
+** Last update Sun Oct 25 13:27:58 2026 Francois Michaut
 **
 ** Socket.cpp : Protable C++ socket class implementation
 */
@@ -16,6 +16,8 @@
 #ifdef OS_WINDOWS
   #include <io.h>
   #include <ws2tcpip.h>
+
+  #define SHUT_RDWR SD_BOTH
 #else
   #include <arpa/inet.h>
   #include <fcntl.h>
@@ -25,9 +27,6 @@
   // To match windows's constants
   static constexpr int INVALID_SOCKET = -1;
   static constexpr int SOCKET_ERROR = -1;
-
-  #include <arpa/inet.h>
-  #include <unistd.h>
 #endif
 
 static constexpr int BUFF_SIZE = 4096;
@@ -35,6 +34,7 @@ static constexpr int BUFF_SIZE = 4096;
 #include <array>
 #include <cerrno>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -44,12 +44,39 @@ namespace CppSockets {
     Socket::Socket(RawSocketType sockfd, bool connected) :
         m_sockfd(sockfd), m_is_connected(connected)
     {
-        socklen_t len = sizeof(int);
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, reinterpret_cast<SockOptType *>(&m_type), sizeof(int));
 
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_TYPE, reinterpret_cast<SockOptType *>(&m_type), &len);
-#ifdef OS_LINUX
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, &len);
-        Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, &len);
+#ifdef SO_DOMAIN
+        // Fast path for Linux
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &m_domain, sizeof(int));
+#else
+        struct sockaddr_storage addr{};
+        socklen_t len = sizeof(addr);
+        if (getsockname(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len) == -1) {
+            throw_errno_error("Failed to getsockname: ");
+        }
+        m_domain = addr.ss_family;
+#endif
+
+#ifdef SO_PROTOCOL
+        // Fast path for Linux
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &m_protocol, sizeof(int));
+#elif defined (OS_WINDOWS)
+        // Windows fallback using Protocol Info
+        WSAPROTOCOL_INFO info;
+        Socket::getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL_INFO, (char *)&info, sizeof(info));
+
+        m_protocol = info.iProtocol;
+#else
+        if (m_domain == AF_INET || m_domain == AF_INET6) {
+            if (m_type == SOCK_STREAM) {
+                m_protocol = IPPROTO_TCP;
+            } else if (m_type == SOCK_DGRAM) {
+                m_protocol = IPPROTO_UDP;
+            } else {
+                m_protocol = -1;
+            }
+        }
 #endif
     }
 
@@ -60,15 +87,17 @@ namespace CppSockets {
     {}
 
     Socket::Socket(int domain, int type, int protocol) :
-        m_domain(domain), m_type(type), m_protocol(protocol), m_sockfd(::socket(domain, type, protocol))
+        m_domain(domain), m_type(type), m_protocol(protocol), m_sockfd(INVALID_SOCKET)
     {
-        if (m_sockfd == INVALID_SOCKET) {
-            throw std::runtime_error(std::string("Failed to create socket : ") + std::strerror(errno));
-        }
+        this->create_socket();
     }
 
     Socket::~Socket() {
-        close();
+        try {
+            close();
+        } catch (const std::runtime_error &e) {
+            std::cerr << e.what() << '\n';
+        }
     }
 
     Socket::Socket(Socket &&other) noexcept :
@@ -79,59 +108,55 @@ namespace CppSockets {
 
     auto Socket::operator=(Socket &&other) noexcept -> Socket & {
         std::swap(m_sockfd, other.m_sockfd);
-
-        m_domain = other.m_domain;
-        m_is_connected = other.m_is_connected;
+        std::swap(m_domain, other.m_domain);
+        std::swap(m_type, other.m_type);
+        std::swap(m_protocol, other.m_protocol);
+        std::swap(m_is_connected, other.m_is_connected);
         return *this;
     }
 
-    void Socket::close() { // NOLINT(readability-make-member-function-const)
+    void Socket::close() {
+        if (m_is_connected && m_type == SOCK_STREAM) {
+            if (shutdown(m_sockfd, SHUT_RDWR) != 0) {
+                // log error instead of raising, errors shouldn't occur and if
+                // they do we still need to close() the FD.
+                std::cerr << "Failed to shutdown connection: " << strerror() << '\n';
+            }
+            m_is_connected = false;
+        }
+
         if (m_sockfd != INVALID_SOCKET) {
 #ifdef OS_WINDOWS
-            closesocket(m_sockfd);
+            int res = closesocket(m_sockfd);
 #else
-            ::close(m_sockfd);
+            int res = ::close(m_sockfd);
 #endif
+            if (res != 0) {
+                throw_errno_error("Failed to close socket: ");
+            }
+
+            m_sockfd = INVALID_SOCKET;
         }
-    }
-
-    auto Socket::getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) -> int {
-        int ret = ::getsockopt(fd, level, optname, optval, optlen);
-
-        if (ret == SOCKET_ERROR)
-            throw std::runtime_error(std::string("Failed to get sock opt: ") + Socket::strerror());
-        return ret;
-    }
-
-    auto Socket::strerror() -> char * {
-        return Socket::strerror(Socket::get_errno());
-    }
-
-    auto Socket::strerror(int err) -> char * {
-        return ::strerror(err);
-    }
-
-    auto Socket::get_errno() -> int {
-#ifdef OS_WINDOWS
-        return WSAGetLastError();
-#else
-        return errno;
-#endif
     }
 
     auto Socket::read(std::size_t len) -> std::string {
-        std::array<char, BUFF_SIZE> buff = {0}; // TODO: Avoid deallocation/reallocation everytime ?
-        std::stringstream res;
-        std::size_t total = 0;
+        std::array<char, BUFF_SIZE> buff;
+        std::size_t buff_size = buff.size();
+        std::string res;
         std::size_t nb = 1;
 
-        while (nb != 0 && (len == -1 || total < len)) {
-            nb = this->read(buff.data(), buff.size());
+        if (len != -1) res.reserve(len);
+
+        while (nb != 0 && len != 0) {
+            nb = this->read(buff.data(), (buff_size > len ? len : buff_size));
             if (nb > 0) {
-                res << std::string(buff.data(), nb);
+                res.append(buff.data(), nb);
+                if (len != -1) {
+                    len -= nb;
+                }
             }
         }
-        return res.str();
+        return res;
     }
 
     auto Socket::read(char *buff, std::size_t size) -> std::size_t {
@@ -141,14 +166,14 @@ namespace CppSockets {
             throw std::runtime_error("Not connected");
         ret = ::read(m_sockfd, buff, size);
         if (ret < 0)
-            throw std::runtime_error(std::string("Failed to read from socket: ") + Socket::strerror());
+            throw_errno_error("Failed to read from socket: ");
         if (ret == 0 && size > 0) {
             m_is_connected = false;
         }
         return ret;
     }
 
-    auto Socket::write(const std::string &buff) -> std::size_t {
+    auto Socket::write(std::string_view buff) -> std::size_t {
         return this->write(buff.data(), buff.size());
     }
 
@@ -159,7 +184,7 @@ namespace CppSockets {
             throw std::runtime_error("Not connected");
         ret = ::write(m_sockfd, buff, len);
         if (ret < 0)
-            throw std::runtime_error(std::string("Failed to write to socket: ") + Socket::strerror());
+            throw_errno_error("Failed to write to socket: ");
         return ret;
     }
 
@@ -177,7 +202,7 @@ namespace CppSockets {
         int ret = ::setsockopt(m_sockfd, level, optname, optval, optlen);
 
         if (ret < 0)
-            throw std::runtime_error(std::string("Failed to set sock opt: ") + Socket::strerror());
+            throw_errno_error("Failed to set socket option: ");
         return ret;
     }
 
@@ -191,20 +216,6 @@ namespace CppSockets {
         return this->bind(endpoint.get_addr().get_address(), endpoint.get_port());
     }
 
-    auto Socket::bind(std::uint32_t source_addr, uint16_t port) -> int { // NOLINT(readability-make-member-function-const)
-        struct sockaddr_in addr = {};
-        int ret = 0;
-
-        addr.sin_family = m_domain;
-        addr.sin_addr.s_addr = source_addr;
-        addr.sin_port = htons(port);
-        ret = ::bind(m_sockfd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr));
-
-        if (ret < 0)
-            throw std::runtime_error(std::string("Failed to bind socket: ") + Socket::strerror());
-        return ret;
-    }
-
     auto Socket::connect(const std::string &addr, uint16_t port) -> int {
         return this->connect(Endpoint<IPv4>(IPv4(addr.c_str()), port));
     }
@@ -216,12 +227,16 @@ namespace CppSockets {
         addr.sin_addr.s_addr = endpoint.get_addr().get_address();
         addr.sin_port = htons(endpoint.get_port());
         addr.sin_family = endpoint.get_addr().get_family();
-        // TODO: If connected close / reconnect
+        if (m_is_connected) {
+            this->close();
+        }
+        if (m_sockfd == INVALID_SOCKET) {
+            this->create_socket();
+        }
         ret = ::connect(m_sockfd, reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
         if (ret < 0) {
             this->close();
-            m_sockfd = ::socket(m_domain, m_type, m_protocol);
-            throw std::runtime_error(std::string("Failed to connect socket to ") + endpoint.to_string() + " : " + Socket::strerror());
+            throw_errno_error(std::string("Failed to connect socket to ") + endpoint.to_string() + " : ");
         } else {
             m_is_connected = true;
         }
@@ -232,19 +247,29 @@ namespace CppSockets {
         int ret = ::listen(m_sockfd, backlog);
 
         if (ret < 0)
-            throw std::runtime_error(std::string("Failed to listen socket: ") + Socket::strerror());
+            throw_errno_error("Failed to listen socket: ");
         return ret;
     }
 
-    auto Socket::accept(void *addr_out) -> std::unique_ptr<Socket> { // NOLINT(readability-make-member-function-const)
+    auto Socket::accept(void *addr_out) -> std::unique_ptr<Socket> {
+        return std::unique_ptr<Socket>(acceptImpl(addr_out));
+    }
+
+    auto Socket::acceptImpl(void *addr_out) -> Socket * { // NOLINT(readability-make-member-function-const)
         int fd = ::accept(m_sockfd, nullptr, nullptr);
 
         if (addr_out != nullptr) {
             // TODO figure it out
         }
-        if (fd == INVALID_SOCKET)
-            return nullptr;
-        return std::make_unique<Socket>(fd, true);
+        if (fd == INVALID_SOCKET) {
+            int err = this->get_errno();
+
+            if (err == EAGAIN || err == EWOULDBLOCK || err == EINTR) {
+                return nullptr;
+            }
+            throw_errno_error("Failed to accept: ", err);
+        }
+        return new Socket(fd, true);
     }
 
     void Socket::set_blocking(bool val) { // NOLINT(readability-make-member-function-const)
@@ -252,7 +277,7 @@ namespace CppSockets {
         u_long mode = val ? 0 : 1;
         int result = ioctlsocket(m_sockfd, FIONBIO, &mode);
         if (result != NO_ERROR) {
-            throw std::runtime_error(std::string("Failed to change socket: ") + Socket::strerror());
+            throw_errno_error("Failed to change socket blocking mode: ");
         }
 #else
         int flags = fcntl(m_sockfd, F_GETFL, 0);
@@ -260,14 +285,80 @@ namespace CppSockets {
 
         if (ret >= 0) {
             if (val) {
-                ret = fcntl(m_sockfd, F_SETFL, flags | O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
+                ret = fcntl(m_sockfd, F_SETFL, flags & ~O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             } else {
-                ret = fcntl(m_sockfd, F_SETFL, (flags | O_NONBLOCK) ^ O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
+                ret = fcntl(m_sockfd, F_SETFL, flags | O_NONBLOCK); // NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg, hicpp-signed-bitwise)
             }
         }
         if (ret < 0) {
-            throw std::runtime_error(std::string("Failed to change socket: ") + Socket::strerror());
+            throw_errno_error("Failed to change socket blocking mode: ");
         }
 #endif
+    }
+
+    auto Socket::getsockopt(int fd, int level, int optname, SockOptType *optval, socklen_t *optlen) -> int {
+        int ret = ::getsockopt(fd, level, optname, optval, optlen);
+
+        if (ret == SOCKET_ERROR)
+            throw_errno_error("Failed to get sock opt: ");
+        return ret;
+    }
+
+    auto Socket::bind(std::uint32_t source_addr, uint16_t port) -> int { // NOLINT(readability-make-member-function-const)
+        struct sockaddr_in addr = {};
+        int ret = 0;
+
+        addr.sin_family = m_domain;
+        addr.sin_addr.s_addr = source_addr;
+        addr.sin_port = htons(port);
+        ret = ::bind(m_sockfd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr));
+
+        if (ret < 0)
+            throw_errno_error("Failed to bind socket: ");
+        return ret;
+    }
+
+    auto Socket::strerror() -> std::string {
+        return Socket::strerror(Socket::get_errno());
+    }
+
+    auto Socket::strerror(int err) -> std::string {
+#ifdef OS_WINDOWS
+        char *msg = nullptr;
+
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+                       | FORMAT_MESSAGE_IGNORE_INSERTS,
+                       nullptr, err, 0, (LPSTR)&msg, 0, nullptr);
+        std::string result(msg ? msg : "Unknown error");
+        LocalFree(msg);
+        return result;
+#else
+        std::array<char, 1024> buf{};
+        strerror_r(err, buf.data(), buf.size());
+        return buf.data();
+#endif
+    }
+
+    auto Socket::get_errno() -> int {
+#ifdef OS_WINDOWS
+        return WSAGetLastError();
+#else
+        return errno;
+#endif
+    }
+
+    void Socket::throw_errno_error(std::string message) {
+        Socket::throw_errno_error(std::move(message), Socket::get_errno());
+    }
+
+    void Socket::throw_errno_error(std::string message, int err) {
+        throw std::runtime_error(std::move(message) + Socket::strerror(err));
+    }
+
+    void Socket::create_socket() {
+        m_sockfd = ::socket(m_domain, m_type, m_protocol);
+        if (m_sockfd == INVALID_SOCKET) {
+            throw_errno_error("Failed to create socket : ");
+        }
     }
 }
