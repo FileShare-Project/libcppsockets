@@ -4,32 +4,35 @@
 ** Author Francois Michaut
 **
 ** Started on  Sat Jan 15 01:17:42 2022 Francois Michaut
-** Last update Sun Oct 25 11:38:13 2026 Francois Michaut
+** Last update Mon Oct 26 20:22:18 2026 Francois Michaut
 **
 ** Socket.hpp : Portable C++ socket class
 */
 
 #pragma once
 
+#include "CppSockets/Address.hpp"
 #include "CppSockets/OSDetection.hpp"
-#include "CppSockets/internal/SocketInit.hpp"
+#include "CppSockets/PollEvent.hpp"
 
 // TODO: move the RawSocketType in CppSockets namespace
 #ifdef OS_WINDOWS
-  #define NOMINMAX
   #include <winsock2.h>
   using RawSocketType=SOCKET;
   using socklen_t=int;
   using SockOptType=char;
+  using PollfdType=WSAPOLLFD;
 #else
   #include <sys/socket.h>
   using RawSocketType=int;
   using SockOptType=void;
+  using PollfdType=struct pollfd;
 #endif
 
+#include <cstdint>
 #include <memory>
 
-#include "CppSockets/Address.hpp"
+#include "CppSockets/internal/SocketInit.hpp"
 
 namespace CppSockets {
     class Socket : SocketInit {
@@ -47,9 +50,12 @@ namespace CppSockets {
 
             virtual void close();
 
-            virtual auto read(std::size_t len = -1) -> std::string;
+            // TODO: Add support for writev/WSASend and sendfile/WSATransmitPackets
+
+            // read() with no lenght blocks once then returns all currently available data
+            auto read(std::size_t len = -1) -> std::string;
             virtual auto read(char *buff, std::size_t size) -> std::size_t;
-            virtual auto write(std::string_view buff) -> std::size_t;
+            auto write(std::string_view buff) -> std::size_t { return this->write(buff.data(), buff.size()); };
             virtual auto write(const char *buff, std::size_t len) -> std::size_t;
 
             auto set_reuseaddr(bool value) -> int;
@@ -62,7 +68,11 @@ namespace CppSockets {
             auto bind(const IEndpoint &endpoint) -> int;
             auto bind(const std::string &addr, uint16_t port) -> int;
             auto listen(int backlog) -> int;
-            auto accept(void *addr_out = nullptr) -> std::unique_ptr<Socket>;
+
+            auto accept() -> std::unique_ptr<Socket>;
+            auto accept(sockaddr_storage &addr) -> std::unique_ptr<Socket>;
+
+            [[nodiscard]] auto poll(PollEvent events, int timeout_ms = 0) const -> PollEvent;
 
             void set_blocking(bool val);
 
@@ -73,10 +83,6 @@ namespace CppSockets {
             // TODO: Allow to get Endpoint
 
             [[nodiscard]] auto connected() const -> bool { return m_is_connected; }
-
-            static auto get_errno() -> int;
-            static auto strerror(int err) -> std::string;
-            static auto strerror() -> std::string;
 
         protected:
             static void throw_errno_error(std::string message);
@@ -91,7 +97,8 @@ namespace CppSockets {
 
             void create_socket();
 
-            virtual auto acceptImpl(void *addr_out) -> Socket *;
+            [[nodiscard]] virtual auto has_more_data() const -> bool;
+            virtual auto acceptImpl(sockaddr_storage *addr_out) -> Socket *;
         private:
             int m_domain = 0;
             int m_type = 0;

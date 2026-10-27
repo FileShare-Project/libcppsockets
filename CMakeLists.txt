@@ -4,12 +4,12 @@
 ## Author Francois Michaut
 ##
 ## Started on  Sun Aug 28 19:26:51 2022 Francois Michaut
-## Last update Sat Oct 24 23:32:08 2026 Francois Michaut
+## Last update Mon Oct 26 22:43:14 2026 Francois Michaut
 ##
 ## CMakeLists.txt : CMake to build the CppSockets library
 ##
 
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.19)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -28,6 +28,7 @@ add_library(cppsockets
   source/Tls/Socket.cpp
 
   source/Address.cpp
+  source/ErrorUtils.cpp
   source/IPv4.cpp
   source/Socket.cpp
   source/SocketInit.cpp
@@ -42,7 +43,7 @@ target_include_directories(cppsockets
 )
 
 if(WIN32)
-  target_compile_definitions(cppsockets PRIVATE CPPSOCKETS_DLL_EXPORTS=1)
+  target_compile_definitions(cppsockets PRIVATE CPPSOCKETS_DLL_EXPORTS=1 NOMINMAX)
 endif()
 
 target_compile_options(cppsockets PRIVATE
@@ -58,5 +59,6 @@ endif()
 
 option(CPPSOCKETS_TESTS "TRUE to build the libcppsockets tests" FALSE)
 if(CPPSOCKETS_TESTS)
+  include(CTest)
   add_subdirectory(tests)
 endif()

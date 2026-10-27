@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Fri Aug  1 09:54:53 2025 Francois Michaut
-** Last update Wed Jul  1 19:48:56 2026 Francois Michaut
+** Last update Mon Oct 26 22:32:36 2026 Francois Michaut
 **
 ** Utils.hpp : Tls Utility types
 */
@@ -15,6 +15,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #define CPP_SOCKETS_TLS_UTILS_DEFINE_DTOR(TYPE, PREFIX)                        \
   struct TYPE##_dtor {                                                         \
@@ -52,6 +53,10 @@ namespace CppSockets {
         }
         return ret;
     }
+
+    auto openssl_extract_errors_from_stack() -> std::string;
+    [[nodiscard]] auto ssl_strerror(int err) -> std::string;
+
 
     using TlsVerifyCallback=std::function<int(int, X509_STORE_CTX *)>;
 }

@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Mon Feb 14 21:17:55 2022 Francois Michaut
-** Last update Wed Jul  1 19:02:32 2026 Francois Michaut
+** Last update Sun Oct 25 23:13:24 2026 Francois Michaut
 **
 ** TestSockets.cpp : Socket tests
 */
@@ -38,7 +38,7 @@ auto TestSockets(int /* ac */, char ** const /* av */) -> int
 
         soc.bind("0.0.0.0", port);
         soc.listen(1);
-        auto client = soc.accept(nullptr);
+        auto client = soc.accept();
         auto buff = client->read();
 
         if (buff != test) {

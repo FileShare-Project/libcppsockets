@@ -4,7 +4,7 @@
 ** Author Francois Michaut
 **
 ** Started on  Sun Feb 13 17:09:05 2022 Francois Michaut
-** Last update Wed Jul  1 14:19:51 2026 Francois Michaut
+** Last update Mon Oct 26 12:13:43 2026 Francois Michaut
 **
 ** Address.hpp : Interface to represent network addresses
 */
@@ -36,9 +36,7 @@ namespace CppSockets {
             [[nodiscard]] virtual auto get_addr() const -> const IAddress & = 0;
             [[nodiscard]] virtual auto to_string() const -> const std::string & = 0;
 
-            static auto from_string(std::string endpoint) -> std::shared_ptr<CppSockets::IEndpoint>;
             static auto from_string(std::string_view endpoint) -> std::shared_ptr<CppSockets::IEndpoint>;
-
         protected:
             [[nodiscard]] auto make_string() const -> std::string;
     };

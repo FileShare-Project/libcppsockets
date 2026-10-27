@@ -30,6 +30,8 @@ namespace CppSockets {
             ~TlsContext();
 
             void set_min_proto_version(int version);
+            void set_cipher_list(const char *cipher_list);
+            void set_ciphersuites(const char *ciphersuites);
 
             void set_verify(int mode, TlsVerifyCallback callback = {});
             void set_verify_depth(int depth);
